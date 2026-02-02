@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>TERMINAL DE ACESSO</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        body { 
+            background-color: #000; 
+            color: var(--tech-primary); 
+            font-family: 'Courier New', monospace; 
+            display: flex; justify-content: center; align-items: center; 
+            height: 100vh; overflow: hidden; margin: 0;
+        }
+
+        #screen { 
+            width: 80%; height: 80%; 
+            border: 4px solid var(--tech-dim); 
+            padding: 40px; 
+            background: radial-gradient(circle, #050005 0%, #000 90%); 
+            position: relative; 
+            box-shadow: 0 0 40px rgba(157, 0, 255, 0.1); 
+            text-shadow: 0 0 5px var(--tech-primary);
+            transition: all 0.5s;
+        }
+
+        .content { font-size: 1.5rem; margin-top: 30px; line-height: 1.6; }
+        h1 { border-bottom: 2px solid var(--tech-primary); padding-bottom: 10px; margin-top: 0; font-size: 2.5rem; }
+
+        /* ESTADOS */
+        .state-win { color: #0f0; text-shadow: 0 0 10px #0f0; border-color: #0f0 !important; }
+        .state-win h1 { border-color: #0f0; }
+
+        /* EZEQUIEL */
+        .state-ezequiel { 
+            color: #ffea00 !important; 
+            text-shadow: 2px 0 red, -2px 0 #ffea00 !important; 
+            border-color: #ffea00 !important; 
+            background: #110000;
+        }
+        .state-ezequiel h1 { border-color: #ffea00 !important; }
+        .state-ezequiel .content { color: #ffea00 !important; }
+
+        /* FAIL / URGÊNCIA (VERMELHO PISCANTE) */
+        .state-fail { 
+            color: #f00; text-shadow: 0 0 10px #f00; 
+            border-color: #f00 !important; 
+            animation: shake 0.5s infinite; 
+            background: #1a0000;
+        }
+        .state-fail h1 { border-color: #f00; }
+
+        /* ADMIN */
+        #admin-panel {
+            display: none; position: fixed; top: 10px; right: 10px; 
+            background: #111; padding: 15px; border: 1px solid #fff; z-index: 999;
+            flex-direction: column; gap: 10px; width: 280px;
+        }
+        .adm-btn { padding: 10px; font-weight: bold; cursor: pointer; color: #000; border: none; margin-bottom: 5px; width: 100%; }
+        
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 50% { transform: translate(-1px, -1px); } 100% { transform: translate(1px, 1px); } }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="screen">
+        <div id="display-area">
+            <h1>> CONEXÃO ESTABELECIDA</h1>
+            <div class="content">
+                > SISTEMA: "NEXUS_LAB_V4"<br>
+                > STATUS: <span style="animation: blink 1s infinite;">AGUARDANDO INPUT...</span><br><br>
+                <hr style="border:0; border-top:1px dashed #555; margin: 20px 0;">
+                MENSAGEM RECEBIDA:<br>
+                "Eu vejo vocês. Ratos no labirinto.<br>
+                Querem sobreviver? Aceitem o preço."<br><br>
+                <span style="color:#aaa;">[OPÇÕES DISPONÍVEIS]</span><br>
+                [1] ACEITAR TRATO (Cura Total + Urgência)<br>
+                [2] TENTATIVA DE HACK (DT 25)
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <h4 style="color:#fff; margin:0 0 10px 0;">RESULTADO DO TESTE</h4>
+        
+        <button class="adm-btn" style="background:#ff9900;" onclick="sendState('deal_accepted')">🤝 ACEITARAM (CURA + URGÊNCIA)</button>
+        <hr style="border-color:#555; width:100%;">
+        <div style="color:#aaa; font-size:0.8rem; margin-bottom:5px;">HACK (TECNOLOGIA)</div>
+        <button class="adm-btn" style="background:#0f0;" onclick="sendState('win')">DT 25+ (VENCE CENA)</button>
+        <button class="adm-btn" style="background:#ffea00;" onclick="sendState('ezequiel')">DT 20-24 (HACK EZEQUIEL)</button>
+        <button class="adm-btn" style="background:#f00; color:#fff;" onclick="sendState('fail')">FALHA (SÓ URGÊNCIA)</button>
+    </div>
+
+    <script>
+        const channel = new BroadcastChannel('terminal_sala2_v1');
+        const display = document.getElementById('display-area');
+        const screenDiv = document.getElementById('screen');
+        let glitchInterval = null;
+
+        // ADMIN CHECK
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            document.getElementById('admin-panel').style.display = 'flex';
+        }
+
+        function sendState(state) {
+            renderState(state); // Local
+            channel.postMessage({ state: state }); // Remote
+        }
+
+        channel.onmessage = (e) => {
+            if (e.data.state) renderState(e.data.state);
+        };
+
+        function renderState(state) {
+            screenDiv.className = ""; // Reset
+            if(glitchInterval) clearInterval(glitchInterval); 
+
+            if(state === 'deal_accepted') {
+                // EFEITO MISTO: URGÊNCIA (VERMELHO) COM ITEM (VERDE)
+                screenDiv.classList.add('state-fail'); // Base vermelha/shake
+                
+                display.innerHTML = `
+                    <h1>> TRATO CONCLUÍDO</h1>
+                    <div class="content">
+                        > ACESSO LIBERADO AO COMPARTIMENTO.<br>
+                        > <span style="color:#0f0; background:#001100; padding:5px; border:1px solid #0f0; text-shadow:0 0 15px #0f0;">ITEM RECEBIDO: [PANACEIA_EX] (CURA TOTAL)</span><br><br>
+                        <hr style="border-color:#f00">
+                        <span style="color:#fff; background:#f00; padding:2px 5px;">⚠️ ALERTA DE SEGURANÇA ⚠️</span><br>
+                        > A TROCA ACIONOU OS SENSORES.<br>
+                        > A HORDA SABE ONDE VOCÊS ESTÃO.<br>
+                        <span style="font-size:2rem; font-weight:bold; animation:blink 0.2s infinite;">URGÊNCIA MÁXIMA ATIVADA!!!</span>
+                    </div>`;
+            }
+            else if(state === 'win') {
+                screenDiv.classList.add('state-win');
+                display.innerHTML = `
+                    <h1>> ACESSO ADMINISTRATIVO</h1>
+                    <div class="content">
+                        > FIREWALL: DESTRUÍDO<br>
+                        > PROTOCOLO DE SEGURANÇA: DESATIVADO<br>
+                        > MAPA COMPLETO: BAIXADO<br><br>
+                        VOCÊS VENCERAM O LABIRINTO.
+                    </div>`;
+            }
+            else if(state === 'ezequiel') {
+                screenDiv.classList.add('state-ezequiel');
+                display.innerHTML = `
+                    <h1 id="ez-title">> ERRO: EZEQUIEL_FOUND</h1>
+                    <div class="content">
+                        > VOCÊ ENCONTROU UMA FALHA NA REALIDADE.<br>
+                        > ARQUIVO "VERDADE.EXE" TRANSFERIDO.<br>
+                        > O SISTEMA NÃO SABE QUE VOCÊ ESTÁ AQUI.<br><br>
+                        USE ISSO COM SABEDORIA.
+                    </div>`;
+                startEzequielGlitch();
+            }
+            else if(state === 'fail') {
+                screenDiv.classList.add('state-fail');
+                display.innerHTML = `
+                    <h1>> ALERTA DE INTRUSÃO</h1>
+                    <div class="content">
+                        > TENTATIVA DE HACK FALHOU.<br>
+                        > LOCALIZAÇÃO RASTREADA.<br>
+                        > INICIANDO PROTOCOLO DE PURGA.<br><br>
+                        URGÊNCIA MÁXIMA ATIVADA!!!
+                    </div>`;
+            }
+        }
+
+        // GLITCH EZEQUIEL
+        function startEzequielGlitch() {
+            const title = document.getElementById('ez-title');
+            const fonts = ['Courier New', 'Impact', 'Arial Black', 'Times New Roman', 'Consolas'];
+            const originalText = "> ERRO: EZEQUIEL_FOUND";
+
+            glitchInterval = setInterval(() => {
+                if(!title) return;
+                title.style.fontFamily = fonts[Math.floor(Math.random() * fonts.length)];
+                let newText = "";
+                for(let i=0; i<originalText.length; i++) {
+                    let char = originalText[i];
+                    if(Math.random() > 0.5) char = char.toLowerCase();
+                    else char = char.toUpperCase();
+                    if(Math.random() > 0.6) {
+                        if(char.toUpperCase() === 'E') char = '3';
+                        if(char.toUpperCase() === 'A') char = '4';
+                        if(char.toUpperCase() === 'O') char = '0';
+                        if(char.toUpperCase() === 'I') char = '1';
+                        if(char.toUpperCase() === 'S') char = '5';
+                    }
+                    newText += char;
+                }
+                title.innerText = newText;
+                title.style.color = Math.random() > 0.9 ? "#fff" : "#ffea00";
+            }, 100);
+        }
+
+    </script>
+</body>
+</html>

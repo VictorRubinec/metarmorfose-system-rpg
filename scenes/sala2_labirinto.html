@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>SALA 02: LABIRINTO TÁTICO</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        /* LAYOUT */
+        body { display: flex; overflow: hidden; }
+        #main-view { flex: 3; display: flex; justify-content: center; align-items: center; background: #020202; position: relative; }
+        #sidebar { flex: 1; background: #0a000a; border-left: 2px solid var(--tech-dim); display: flex; flex-direction: column; padding: 15px; box-shadow: -5px 0 20px rgba(0,0,0,0.5); z-index: 10; }
+
+        /* GRID DO MAPA */
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(7, 90px);
+            grid-template-rows: repeat(7, 90px);
+            gap: 0;
+            border: 4px solid var(--tech-dim);
+            background: #000;
+            box-shadow: 0 0 40px rgba(157, 0, 255, 0.1);
+        }
+
+        .cell {
+            width: 90px; height: 90px;
+            position: relative;
+            background: #050505;
+            border: 1px solid #111;
+            display: flex;
+            align-items: center; justify-content: center;
+            box-sizing: border-box;
+        }
+
+        /* PAREDES REAIS */
+        .w-top { border-top: 4px solid var(--tech-primary) !important; z-index: 1; }
+        .w-right { border-right: 4px solid var(--tech-primary) !important; z-index: 1; }
+        .w-bottom { border-bottom: 4px solid var(--tech-primary) !important; z-index: 1; }
+        .w-left { border-left: 4px solid var(--tech-primary) !important; z-index: 1; }
+
+        /* NEBLINA DE GUERRA */
+        .fog { background: #000 !important; border-color: #000 !important; }
+        .fog .cell-content, .fog .status-indicator { display: none !important; }
+        
+        /* VISÃO DE ADMIN (RAIO-X) */
+        body.is-admin .cell.fog { background: #0a000a !important; border: 1px dotted #333 !important; }
+        body.is-admin .cell.fog .cell-content { display: flex !important; opacity: 0.3; filter: grayscale(1); }
+        body.is-admin .cell.fog.w-top { border-top: 2px dashed #553355 !important; }
+        body.is-admin .cell.fog.w-right { border-right: 2px dashed #553355 !important; }
+        body.is-admin .cell.fog.w-bottom { border-bottom: 2px dashed #553355 !important; }
+        body.is-admin .cell.fog.w-left { border-left: 2px dashed #553355 !important; }
+
+        /* CONTEÚDO DA CÉLULA (ASCII) */
+        .cell-content {
+            position: absolute; font-size: 1.8rem; font-weight: bold;
+            opacity: 0.5; z-index: 0; pointer-events: none;
+            text-shadow: 0 0 5px currentColor;
+        }
+        
+        /* CORES DE EFEITO */
+        .eff-vis-bad { color: #ffaa00; }
+        .eff-vis-good { color: #00aaaa; }
+        .eff-heal { color: #00ff00; }
+        .eff-dmg { color: #ff0000; }
+        .eff-loot { color: #ffff00; }
+        .eff-term { color: #ff00ff; text-shadow: 0 0 10px #ff00ff; animation: pulse 2s infinite; }
+        .eff-exit { color: #ffffff; text-shadow: 0 0 10px #fff; }
+
+        /* GRID DE PLAYERS */
+        .player-grid {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr);
+            padding: 4px; gap: 2px; z-index: 2; pointer-events: none;
+        }
+
+        .token {
+            width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; color: #000;
+            font-size: 0.8rem; font-weight: 900;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 8px currentColor; justify-self: center; align-self: center;
+        }
+
+        /* INDICADOR DE STATUS */
+        .status-indicator {
+            position: absolute; bottom: 2px; right: 2px;
+            width: 8px; height: 8px; border-radius: 50%; z-index: 1;
+        }
+        .ind-bad { background: #ff0000; box-shadow: 0 0 5px #ff0000; }
+        .ind-good { background: #00ff00; box-shadow: 0 0 5px #00ff00; }
+
+        /* SIDEBAR */
+        .scan-box { border: 2px solid var(--tech-primary); padding: 15px; margin-bottom: 20px; background: rgba(157, 0, 255, 0.05); }
+        .vis-meter { width: 100%; height: 40px; background: #111; margin-top: 10px; border: 2px solid #555; position: relative; }
+        .vis-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0f0, #ff0, #f00); transition: width 0.5s; box-shadow: 0 0 20px currentColor; }
+        
+        .p-card { display: flex; justify-content: space-between; align-items: center; background: #111; padding: 10px; margin-bottom: 5px; border-left: 4px solid #555; }
+        .vis-dot { width: 14px; height: 14px; border-radius: 50%; background: #222; border: 2px solid #444; }
+        .vis-dot.active { background: var(--organic-alert); box-shadow: 0 0 8px var(--organic-alert); border-color: #fff; }
+
+        .log-box { flex: 1; border: 1px solid #333; background: #000; font-size: 0.8rem; color: #888; overflow-y: auto; padding: 10px; }
+        .log-bad { color: var(--organic-alert); } .log-good { color: #00ff00; } .log-info { color: #00eaff; }
+
+        /* ADMIN PANEL */
+        #local-admin {
+            display: none; position: fixed; top: 0; right: 0; width: 340px; height: 100vh;
+            background: #0a000a; border-left: 2px solid var(--tech-primary);
+            padding: 15px; z-index: 2000; overflow-y: auto; opacity: 0.98;
+        }
+        .ctrl-group { border: 1px solid #333; padding: 10px; margin-bottom: 15px; }
+        .btn-move { width: 40px; height: 40px; font-size: 1.2rem; }
+
+        /* BOTÃO TERMINAL */
+        #term-btn-area { margin-bottom: 10px; display: none; }
+        .btn-terminal { width: 100%; background: var(--tech-primary); color: #000; font-weight: bold; padding: 10px; border: 1px solid #fff; cursor: pointer; animation: pulse 1s infinite; }
+
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+    </style>
+</head>
+<body>
+
+<div id="gm-helper" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:70%; max-height:85vh; background:#001010; border:2px solid #00eaff; padding:25px; z-index:3000; box-shadow:0 0 60px rgba(0, 234, 255, 0.15); overflow-y:auto; font-family:'Consolas', monospace;">
+        
+        <h3 style="background:linear-gradient(90deg, #00eaff, transparent); color:#000; padding:5px 10px; margin-top:0; border-left:5px solid #fff;">>>> PROTOCOLO DE FURTIVIDADE (S.H.) <<<</h3>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                
+                <div style="border:1px solid #333; padding:10px; background:#050505;">
+                    <strong style="color:#00eaff; border-bottom:1px solid #333; display:block; margin-bottom:5px;">STATUS DE VISIBILIDADE</strong>
+                    <ul style="padding-left:20px; font-size:0.85rem; color:#ccc; margin:0;">
+                        <li><strong style="color:#0f0">0 (OCULTO):</strong> Ninguém sabe onde você está.</li>
+                        <li><strong style="color:#ffea00">1-2 (SUSPEITA):</strong> Algozes buscam ativamente.</li>
+                        <li><strong style="color:#f00">3+ (EXPOSTO):</strong> Você foi visto. Combate/Fuga inicia.</li>
+                    </ul>
+                    <div style="margin-top:8px; font-size:0.8rem; color:#aaa; border-top:1px dashed #333; padding-top:5px;">
+                        <strong>VISIBILIDADE DE GRUPO:</strong> Se a soma de todos for <strong>5+</strong>, todos com Visibilidade 1 ou maior são detectados imediatamente.
+                    </div>
+                </div>
+
+                <div style="border:1px solid #333; padding:10px; background:#050505;">
+                    <strong style="color:#00eaff; border-bottom:1px solid #333; display:block; margin-bottom:5px;">MODOS DE AÇÃO (POR RODADA)</strong>
+                    
+                    <div style="margin-bottom:8px;">
+                        <span style="color:#0f0; font-weight:bold;">[DISCRETA] VISIBILIDADE +0</span>
+                        <p style="font-size:0.8rem; margin:2px 0; color:#888;">
+                            Andar agachado, sussurrar.<br>
+                            <em>Penalidade:</em> Move metade do deslocamento. -1d20 em testes.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        <span style="color:#ffea00; font-weight:bold;">[COMUM] VISIBILIDADE +1</span>
+                        <p style="font-size:0.8rem; margin:2px 0; color:#888;">
+                            Andar normal, falar baixo, investigar sala.<br>
+                            <em>Efeito:</em> Regras normais de jogo.
+                        </p>
+                    </div>
+
+                    <div>
+                        <span style="color:#f00; font-weight:bold;">[CHAMATIVA] VISIBILIDADE +2</span>
+                        <p style="font-size:0.8rem; margin:2px 0; color:#888;">
+                            Correr, gritar, atacar, conjurar ritual.<br>
+                            <em>Efeito:</em> O som/luz alerta a rede neural imediatamente.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:15px;">
+                
+                <div style="border:1px solid #00eaff; padding:10px; position:relative;">
+                    <div style="position:absolute; top:-10px; right:10px; background:#001010; padding:0 5px; color:#00eaff; font-size:0.8rem;">MANOBRA 01</div>
+                    <strong style="color:#fff;">ESCONDER-SE</strong>
+                    <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">
+                        <em>O agente foca apenas em sumir de vista.</em>
+                        <br><br>
+                        <strong>TESTE:</strong> Furtividade (DT 15).<br>
+                        <span style="color:#0f0">SUCESSO:</span> Visibilidade <strong>-1</strong>.<br>
+                        <span style="color:#f00">FALHA:</span> Visibilidade não muda.
+                    </div>
+                </div>
+
+                <div style="border:1px solid #00eaff; padding:10px; position:relative;">
+                    <div style="position:absolute; top:-10px; right:10px; background:#001010; padding:0 5px; color:#00eaff; font-size:0.8rem;">MANOBRA 02</div>
+                    <strong style="color:#fff;">DISTRAIR</strong>
+                    <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">
+                        <em>Jogar pedra, criar ruído falso (Limite: 1x por rodada).</em>
+                        <br><br>
+                        <strong>TESTE:</strong> Enganação (DT 15 + 5 por uso anterior na cena).<br>
+                        <span style="color:#0f0">SUCESSO:</span> Visibilidade <strong>-1</strong> (Para si ou Aliado).<br>
+                        <span style="color:#f00">FALHA:</span> Visibilidade <strong>+1</strong> (Para si mesmo).
+                    </div>
+                </div>
+
+                <div style="border:1px solid #00eaff; padding:10px; position:relative;">
+                    <div style="position:absolute; top:-10px; right:10px; background:#001010; padding:0 5px; color:#00eaff; font-size:0.8rem;">MANOBRA 03</div>
+                    <strong style="color:#fff;">CHAMAR ATENÇÃO</strong>
+                    <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">
+                        <em>Se expor para salvar um aliado.</em>
+                        <br><br>
+                        <strong>TESTE:</strong> Nenhum (Automático).<br>
+                        <span style="color:#ffea00">EFEITO:</span> Você ganha <strong>Visibilidade +2</strong>.<br>
+                        Um aliado próximo ganha <strong>Visibilidade -1</strong>.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <button onclick="document.getElementById('gm-helper').style.display='none'" style="width:100%; margin-top:20px; border:1px solid #00eaff; background:transparent; color:#00eaff; padding:10px; cursor:pointer; font-weight:bold; letter-spacing:2px;">FECHAR GUIA TÁTICO</button>
+    </div>
+
+    <div id="main-view">
+        <div id="grid"></div>
+    </div>
+
+    <div id="sidebar">
+        <div class="scan-box">
+            <span style="color:var(--tech-primary); display:block; border-bottom:1px solid #333; font-size:1.2rem;">VISIBILIDADE DA EQUIPE</span>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:10px;">
+                <span id="vis-val" style="font-size:3rem; font-weight:bold; color:#fff; line-height:1;">0%</span>
+                <small id="vis-status" style="color:#0f0; font-size:1.2rem; font-weight:bold;">FURTIVO</small>
+            </div>
+            <div class="vis-meter"><div class="vis-fill" id="vis-bar"></div></div>
+        </div>
+
+        <div class="scan-box" style="padding:10px;">
+            <span style="color:#888; font-size:0.8rem; display:block; margin-bottom:10px;">STATUS INDIVIDUAL</span>
+            <div id="player-list-ui"></div>
+        </div>
+
+        <div class="log-box" id="game-log">> SISTEMA TÁTICO ONLINE...</div>
+    </div>
+
+    <div id="local-admin">
+        <h4 style="color:#fff; border-bottom:1px solid #333;">CONTROLE MESTRE</h4>
+        
+        <div id="term-btn-area">
+            <button class="btn-terminal" onclick="openTerminalScreen()">💻 ABRIR TELA TERMINAL</button>
+            <div style="font-size:0.7rem; color:#aaa; text-align:center;">Jogador posicionado no Terminal</div>
+        </div>
+
+        <div class="ctrl-group">
+            <small style="color:#aaa;">SELECIONAR AGENTE</small>
+            <div id="admin-p-select" style="display:flex; flex-wrap:wrap; gap:5px; margin-top:5px;"></div>
+        </div>
+
+        <div class="ctrl-group">
+            <small style="color:#aaa;">MOVER (WASD)</small>
+            <div style="display:grid; grid-template-columns: 40px 40px 40px; gap:5px; justify-content:center; margin-top:5px;">
+                <div></div> <button class="btn-move" onclick="moveSelected(0, -1)">⬆</button> <div></div>
+                <button class="btn-move" onclick="moveSelected(-1, 0)">⬅</button> <div></div> <button class="btn-move" onclick="moveSelected(1, 0)">➡</button>
+                <div></div> <button class="btn-move" onclick="moveSelected(0, 1)">⬇</button> <div></div>
+            </div>
+        </div>
+
+        <div class="ctrl-group">
+            <small style="color:#aaa;">VISIBILIDADE</small>
+            <div id="admin-vis-ctrl" style="margin-top:5px;"></div>
+        </div>
+
+        <button onclick="revealMap()" style="width:100%; border-color:#0f0; color:#0f0; margin-bottom:5px; padding:10px;">👁️ REVELAR MAPA</button>
+        <button onclick="generateMaze()" style="width:100%; border-color:#555; color:#aaa; padding:10px;">🔄 GERAR NOVO LABIRINTO</button>
+    </div>
+
+    <script src="../js/system_core.js"></script>
+    <script>
+        const localChannel = new BroadcastChannel('sala2_final_v4');
+
+        const gridSize = 7;
+        let map = [];
+        let visited = new Set();
+        let revealedMap = false;
+        let selectedPlayerId = 1;
+        let localPlayers = [];
+
+        // CONFIGURAÇÃO DOS EFEITOS
+        const effectsConfig = {
+            'vis_p1': { icon: '(O)', color: 'eff-vis-bad', msg: "SENSOR ATIVO! Furtividade DT 20 ou Visibilidade +1.", type: 'bad' },
+            'vis_p2': { icon: '((O))', color: 'eff-vis-bad', msg: "CÂMERA DE ALTA SEGURANÇA! Furtividade DT 25 ou Visibilidade +2.", type: 'bad' },
+            'vis_m1': { icon: '(-)', color: 'eff-vis-good', msg: "PONTO CEGO. Furtividade DT 20 para reduzir Visibilidade em 1.", type: 'good' },
+            'heal_hp': { icon: '[+]', color: 'eff-heal', msg: "SUPRIMENTOS MÉDICOS encontrados (Cura Leve).", type: 'good' },
+            'heal_pd': { icon: '[P]', color: 'eff-heal', msg: "ESTIMULANTES encontrados (Recupera PD).", type: 'good' },
+            'term': { icon: '[#]', color: 'eff-term', msg: "TERMINAL DE DADOS. Conexão disponível.", type: 'good' },
+            'loot': { icon: '[$]', color: 'eff-loot', msg: "CARTEIRA DE CRÉDITOS encontrada (Pontos Loja).", type: 'good' },
+            'dmg_l': { icon: '/!\\', color: 'eff-dmg', msg: "ARMADILHA ELÉTRICA! Reflexos DT 20 ou Dano Leve.", type: 'bad' },
+            'dmg_h': { icon: '/X\\', color: 'eff-dmg', msg: "EXPLOSIVOS! Reflexos DT 25 ou Dano Pesado.", type: 'bad' },
+            'enemy': { icon: '<!>', color: 'eff-vis-bad', msg: "INIMIGO DETECTADO! Preparar para combate.", type: 'bad' },
+            'exit': { icon: '[EXIT]', color: 'eff-exit', msg: "SAÍDA LOCALIZADA! Rota de fuga traçada.", type: 'good' }
+        };
+
+        // BARALHO DE ENCONTROS (APENAS 1 TERMINAL)
+        const encounterDeck = [
+            'term', // <--- ÚNICO TERMINAL
+            
+            // Ameaças
+            'vis_p1', 'vis_p1', 'vis_p1', 'vis_p1', 'vis_p1',
+            'vis_p2', 'vis_p2', 'vis_p2',
+            'dmg_l', 'dmg_l', 'dmg_l', 'dmg_l',
+            'dmg_h', 'dmg_h', 'dmg_h',
+            
+            // Inimigos
+            'enemy', 'enemy', 'enemy', 'enemy', 'enemy',
+
+            // Recursos
+            'vis_m1', 'vis_m1', 'vis_m1', 'vis_m1',
+            'heal_hp', 'heal_hp', 'heal_hp',
+            'heal_pd', 'heal_pd', 'heal_pd',
+            'loot', 'loot', 'loot', 'loot', 'loot',
+
+            // Saída
+            'exit'
+        ];
+
+        // INIT
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'true';
+
+        if(isAdmin) {
+            document.body.classList.add('is-admin');
+            document.getElementById('local-admin').style.display = 'block';
+        }
+
+        function init() {
+            localPlayers = globalState.players.map(p => ({
+                id: p.id, name: p.name, initial: p.id.toString(),
+                color: getPlayerColor(p.id), x: 3, y: 6, vis: 0
+            }));
+            
+            if(isAdmin && map.length === 0) generateMaze();
+            else if(!isAdmin) setTimeout(() => localChannel.postMessage({type: 'REQUEST_SYNC'}), 500);
+            
+            render();
+            if(isAdmin) renderAdminControls();
+        }
+
+        function getPlayerColor(id) {
+            return ['#ff3333', '#33ff33', '#3333ff', '#ffff33', '#ff33ff', '#33ffff'][id-1] || '#fff';
+        }
+
+        // --- GERAÇÃO (Backtracker) ---
+        function generateMaze() {
+            map = [];
+            for(let y=0; y<gridSize; y++) {
+                let row = [];
+                for(let x=0; x<gridSize; x++) row.push({ x, y, walls: {t:1, r:1, b:1, l:1}, content: null, status: null });
+                map.push(row);
+            }
+
+            let stack = [map[6][3]];
+            map[6][3].visitedGen = true;
+
+            while(stack.length > 0) {
+                let curr = stack[stack.length - 1];
+                let n = getUnvisitedNeighbors(curr);
+                if(n.length > 0) {
+                    let nextInfo = n[Math.floor(Math.random() * n.length)];
+                    removeWall(curr, nextInfo.cell, nextInfo.dir);
+                    nextInfo.cell.visitedGen = true;
+                    stack.push(nextInfo.cell);
+                } else stack.pop();
+            }
+
+            // Paredes Extras
+            for(let i=0; i<10; i++) {
+                let rx = Math.floor(Math.random() * 5)+1;
+                let ry = Math.floor(Math.random() * 5)+1;
+                map[ry][rx].walls.r = 0; map[ry][rx+1].walls.l = 0;
+            }
+
+            // Entrada Aberta
+            let start = map[6][3];
+            start.walls = {t:0, r:0, b:1, l:0};
+            if(map[5][3]) map[5][3].walls.b = 0;
+            if(map[6][2]) map[6][2].walls.r = 0;
+            if(map[6][4]) map[6][4].walls.l = 0;
+
+            populateContent();
+
+            visited.clear(); visited.add("3,6");
+            revealedMap = false;
+            sync();
+            log("NOVO MAPEAMENTO CONCLUÍDO.", "log-good");
+        }
+
+        function getUnvisitedNeighbors(cell) {
+            let res = [];
+            const dirs = [{dx:0, dy:-1, k:'t', o:'b'}, {dx:1, dy:0, k:'r', o:'l'}, {dx:0, dy:1, k:'b', o:'t'}, {dx:-1, dy:0, k:'l', o:'r'}];
+            dirs.forEach(d => {
+                let nx = cell.x + d.dx, ny = cell.y + d.dy;
+                if(nx>=0 && nx<gridSize && ny>=0 && ny<gridSize && !map[ny][nx].visitedGen) res.push({cell: map[ny][nx], dir: d});
+            });
+            return res;
+        }
+        function removeWall(a, b, d) { a.walls[d.k] = 0; b.walls[d.o] = 0; }
+
+        function populateContent() {
+            let deck = [...encounterDeck];
+            // Preenche resto com inimigos/vazio para densidade
+            while(deck.length < 40) deck.push(Math.random() > 0.6 ? 'enemy' : 'vis_p1');
+            deck.sort(() => Math.random() - 0.5);
+
+            for(let y=0; y<gridSize; y++) {
+                for(let x=0; x<gridSize; x++) {
+                    if(x===3 && y===6) continue;
+                    if(deck.length > 0) map[y][x].content = deck.pop();
+                    else map[y][x].content = null;
+                }
+            }
+            // Garante Itens Chave
+            ensurePlaced('exit');
+            ensurePlaced('term');
+        }
+
+        function ensurePlaced(type) {
+            let found = false;
+            for(let row of map) for(let c of row) if(c.content === type) found = true;
+            if(!found) {
+                if(!map[0][0].content) map[0][0].content = type;
+                else map[0][6].content = type;
+            }
+        }
+
+        // --- RENDER ---
+        function render() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for(let y=0; y<gridSize; y++) for(let x=0; x<gridSize; x++) {
+                let c = map[y][x];
+                let el = document.createElement('div');
+                el.className = 'cell';
+                if(c.walls.t) el.classList.add('w-top');
+                if(c.walls.r) el.classList.add('w-right');
+                if(c.walls.b) el.classList.add('w-bottom');
+                if(c.walls.l) el.classList.add('w-left');
+
+                let key = `${x},${y}`;
+                if(!visited.has(key) && !revealedMap) el.classList.add('fog');
+
+                if(c.content && effectsConfig[c.content]) {
+                    let conf = effectsConfig[c.content];
+                    let sp = document.createElement('span');
+                    sp.className = `cell-content ${conf.color}`;
+                    sp.innerText = conf.icon;
+                    if(c.content === 'term') sp.classList.add('cnt-term'); // Classe extra para animação
+                    el.appendChild(sp);
+                }
+
+                if(c.status) {
+                    let ind = document.createElement('div');
+                    ind.className = `status-indicator ind-${c.status}`;
+                    el.appendChild(ind);
+                }
+
+                let pg = document.createElement('div'); pg.className = 'player-grid';
+                localPlayers.forEach(p => {
+                    if(p.x === x && p.y === y) {
+                        let t = document.createElement('div');
+                        t.className = 'token'; t.style.background = p.color; t.innerText = p.initial;
+                        pg.appendChild(t);
+                    }
+                });
+                el.appendChild(pg);
+
+                if(isAdmin) el.onclick = () => { let p = localPlayers.find(pl=>pl.id===selectedPlayerId); if(p) { p.x=x; p.y=y; visitCell(x,y); sync(); } };
+                grid.appendChild(el);
+            }
+            updateUI();
+        }
+
+        // --- GAME LOGIC ---
+        function moveSelected(dx, dy) {
+            let p = localPlayers.find(pl=>pl.id===selectedPlayerId); if(!p) return;
+            let curr = map[p.y][p.x];
+            if(dy===-1 && curr.walls.t) return log("PAREDE NORTE.", "log-bad");
+            if(dx===1 && curr.walls.r) return log("PAREDE LESTE.", "log-bad");
+            if(dy===1 && curr.walls.b) return log("PAREDE SUL.", "log-bad");
+            if(dx===-1 && curr.walls.l) return log("PAREDE OESTE.", "log-bad");
+
+            let nx=p.x+dx, ny=p.y+dy;
+            if(nx<0||nx>=gridSize||ny<0||ny>=gridSize) return;
+            
+            p.x=nx; p.y=ny;
+            visitCell(nx, ny);
+            sync();
+        }
+
+        function visitCell(x, y) {
+            let cell = map[y][x];
+            
+            // VERIFICA SE É TERMINAL E MOSTRA BOTÃO PRO MESTRE
+            if(isAdmin) {
+                if(cell.content === 'term') {
+                    document.getElementById('term-btn-area').style.display = 'block';
+                    if(!visited.has(`${x},${y}`)) log("TERMINAL ENCONTRADO. CONEXÃO DISPONÍVEL.", "log-info");
+                } else {
+                    document.getElementById('term-btn-area').style.display = 'none';
+                }
+            }
+
+            let key = `${x},${y}`;
+            if(!visited.has(key)) {
+                visited.add(key);
+                
+                if(cell.content && effectsConfig[cell.content]) {
+                    let conf = effectsConfig[cell.content];
+                    log(`[SALA ${x},${y}] ${conf.msg}`, conf.type === 'bad' ? 'log-bad' : 'log-info');
+                    cell.status = conf.type;
+                } else {
+                    cell.status = 'good';
+                }
+            }
+        }
+
+        function openTerminalScreen() {
+            sendNavigation('scenes/terminal.html'); // Muda tela dos players
+            window.open('terminal.html?admin=true', '_blank'); // Abre controle mestre
+        }
+
+        function updateUI() {
+            const list = document.getElementById('player-list-ui'); list.innerHTML = '';
+            let total = 0;
+            localPlayers.forEach(p => {
+                total += p.vis;
+                let dots = '';
+                for(let i=1; i<=3; i++) dots += `<div class="vis-dot ${i<=p.vis?'active':''}"></div>`;
+                list.innerHTML += `<div class="p-card" style="border-color:${p.color}"><span style="color:${p.color}; font-weight:bold;">${p.name}</span><div style="display:flex; gap:5px;">${dots}</div></div>`;
+            });
+            let avg = (total / (localPlayers.length * 3)) * 100;
+            if(isNaN(avg)) avg = 0;
+            document.getElementById('vis-val').innerText = Math.floor(avg) + "%";
+            document.getElementById('vis-bar').style.width = avg + "%";
+            
+            let st = document.getElementById('vis-status');
+            if(avg<30) { st.innerText="SEGURO"; st.style.color="#0f0"; }
+            else if(avg<70) { st.innerText="ALERTA"; st.style.color="#ff0"; }
+            else { st.innerText="CRÍTICO"; st.style.color="#f00"; }
+        }
+
+        function renderAdminControls() {
+            let sel = document.getElementById('admin-p-select'); sel.innerHTML = '';
+            localPlayers.forEach(p => {
+                let b = document.createElement('button'); b.innerText = p.initial; b.style.borderColor = p.color;
+                b.style.background = p.id===selectedPlayerId ? p.color : '#000'; b.style.color = p.id===selectedPlayerId ? '#000' : p.color;
+                b.style.width="30px"; b.style.padding="5px"; b.onclick = () => { selectedPlayerId=p.id; renderAdminControls(); };
+                sel.appendChild(b);
+            });
+            let vis = document.getElementById('admin-vis-ctrl'); vis.innerHTML = '';
+            localPlayers.forEach(p => {
+                vis.innerHTML += `<div style="display:flex; justify-content:space-between; background:#222; margin-bottom:2px; padding:5px;"><span style="color:${p.color}">${p.name}</span><div><button style="padding:2px 5px;" onclick="modVis(${p.id},-1)">-</button><span style="margin:0 5px; color:#fff;">${p.vis}</span><button style="padding:2px 5px;" onclick="modVis(${p.id},1)">+</button></div></div>`;
+            });
+        }
+
+        function modVis(id, v) { 
+            let p = localPlayers.find(pl=>pl.id===id); p.vis += v; 
+            if(p.vis<0) p.vis=0; if(p.vis>3) p.vis=3; 
+            renderAdminControls(); sync(); 
+        }
+        function revealMap() { revealedMap = !revealedMap; sync(); }
+        function log(m, t) { let d=document.createElement('div'); d.innerText=`> ${m}`; if(t) d.className=t; document.getElementById('game-log').prepend(d); }
+        function sync() { 
+            const state = { map, players: localPlayers, visited: Array.from(visited), revealed: revealedMap };
+            localChannel.postMessage({ type: 'SYNC', state }); 
+            render(); 
+        }
+        localChannel.onmessage = (e) => { 
+            if(e.data.type==='SYNC') { map=e.data.state.map; localPlayers=e.data.state.players; visited=new Set(e.data.state.visited); revealedMap=e.data.state.revealed; render(); }
+            if(e.data.type==='REQUEST_SYNC' && isAdmin) sync();
+        };
+        channel.addEventListener('message', (e) => { if(e.data.type==='TOGGLE_HELPER') document.getElementById('gm-helper').style.display='block'; });
+
+        if(isAdmin) init(); else setTimeout(() => { if(map.length===0) init(); }, 500);
+
+    </script>
+</body>
+</html>

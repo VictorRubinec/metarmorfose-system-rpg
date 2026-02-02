@@ -1,0 +1,196 @@
+/* =========================================
+   VARIAVEIS E CORES (PALETA CYBER-HORROR)
+   ========================================= */
+:root {
+    /* Cores de Fundo */
+    --bg-color: #050005;          /* Preto Roxo Profundo */
+    --panel-bg: rgba(20, 0, 30, 0.6); /* Fundo de painéis semi-transparente */
+
+    /* Cores de Interface */
+    --tech-primary: #9d00ff;      /* Roxo Neon (Principal) */
+    --tech-dim: #4b007d;          /* Roxo Escuro (Bordas/Fundo) */
+    --tech-success: #00ff00;      /* Verde (Vivo/Conectado) */
+    
+    /* Cores de Estado/Alerta */
+    --organic-alert: #ff003c;     /* Vermelho Sangue (Perigo/Morte) */
+    --ezequiel-glitch: #ffea00;   /* Amarelo (Glitch/Vírus) */
+    
+    /* Texto */
+    --text-main: #e0ccff;         /* Branco lilás (Legibilidade) */
+    --text-dim: #888;             /* Texto secundário */
+
+    /* Efeitos */
+    --scanline-color: rgba(18, 16, 16, 0.1);
+}
+
+/* =========================================
+   RESET E BASE
+   ========================================= */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: 'Consolas', 'Courier New', monospace;
+    margin: 0;
+    overflow: hidden; /* Evita barras de rolagem globais indesejadas */
+    height: 100vh;
+    text-transform: uppercase;
+}
+
+/* EFEITO CRT (SCANLINES) - Sobrepõe tudo */
+body::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 9999; /* Fica acima de tudo, mas abaixo de popups críticos */
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none; /* Permite clicar através dele */
+}
+
+/* =========================================
+   TIPOGRAFIA
+   ========================================= */
+h1, h2, h3, h4 {
+    color: var(--tech-primary);
+    text-shadow: 0 0 10px var(--tech-primary);
+    letter-spacing: 4px;
+    border-bottom: 2px solid var(--tech-dim);
+    margin-top: 0;
+}
+
+a { color: var(--tech-primary); text-decoration: none; }
+small { font-size: 0.7rem; color: var(--text-dim); }
+
+/* =========================================
+   ELEMENTOS DE INTERFACE (BOTÕES E INPUTS)
+   ========================================= */
+
+/* Botão Padrão */
+button, .btn {
+    background: #000;
+    border: 1px solid var(--tech-primary);
+    color: var(--tech-primary);
+    padding: 10px 20px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+}
+
+button:hover, .btn:hover {
+    background: var(--tech-primary);
+    color: #000;
+    box-shadow: 0 0 15px var(--tech-primary);
+}
+
+button:active { transform: translateY(2px); }
+
+/* Inputs de Texto/Número */
+input, select, textarea {
+    background: #000;
+    border: 1px solid var(--tech-dim);
+    color: #fff;
+    padding: 8px;
+    font-family: 'Consolas', monospace;
+    text-align: center;
+    font-weight: bold;
+    outline: none;
+}
+
+input:focus {
+    border-color: var(--tech-primary);
+    box-shadow: 0 0 10px var(--tech-dim);
+}
+
+/* =========================================
+   VARIANTES DE ESTILO (CLASSES UTILITÁRIAS)
+   ========================================= */
+
+/* Estilo Perigo/Orgânico (Vermelho) */
+.organic-mode, .btn-danger {
+    border-color: var(--organic-alert) !important;
+    color: var(--organic-alert) !important;
+    text-shadow: 0 0 5px var(--organic-alert);
+}
+.btn-danger:hover { background: var(--organic-alert) !important; color: #000 !important; }
+
+/* Estilo Ezequiel/Glitch (Amarelo) */
+.ezequiel-mode, .btn-glitch {
+    border-color: var(--ezequiel-glitch) !important;
+    color: var(--ezequiel-glitch) !important;
+    text-shadow: 2px 0 var(--organic-alert), -2px 0 var(--tech-primary);
+    animation: glitch-anim 0.2s infinite;
+}
+.btn-glitch:hover { background: var(--ezequiel-glitch) !important; color: #000 !important; }
+
+/* Estilo Sucesso/Vivo (Verde) */
+.btn-success {
+    border-color: var(--tech-success) !important;
+    color: var(--tech-success) !important;
+}
+.btn-success:hover { background: var(--tech-success) !important; color: #000 !important; }
+
+/* =========================================
+   HELPER POPUP (PARA O MESTRE)
+   ========================================= */
+#gm-helper {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    max-height: 80%;
+    background: #0a000a;
+    border: 2px solid var(--tech-primary);
+    padding: 20px;
+    z-index: 10000; /* Acima do CRT */
+    overflow-y: auto;
+    box-shadow: 0 0 50px rgba(157, 0, 255, 0.3);
+}
+
+#gm-helper h3 { 
+    margin-top: 0; 
+    color: #000; 
+    background: var(--tech-primary); /* Invertido para destaque */
+    padding: 5px; 
+    text-align: center;
+    border: none;
+}
+
+#gm-helper ul { list-style: none; padding: 0; }
+#gm-helper li { margin-bottom: 10px; border-bottom: 1px dashed #333; padding-bottom: 5px; }
+#gm-helper strong { color: var(--tech-primary); }
+
+/* =========================================
+   ANIMAÇÕES GLOBAIS
+   ========================================= */
+@keyframes glitch-anim {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* =========================================
+   SCROLLBAR CUSTOMIZADA
+   ========================================= */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: var(--tech-dim); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--tech-primary); }

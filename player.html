@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>METAMORFOSE :: VISUALIZAÇÃO</title>
+    <link rel="stylesheet" href="css/style_global.css">
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; }
+        iframe { width: 100vw; height: 100vh; border: none; }
+        #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:99; display:flex; justify-content:center; align-items:center; pointer-events:none; opacity:0; transition: opacity 0.5s; }
+        .loading-active { opacity: 1 !important; }
+    </style>
+</head>
+<body>
+
+    <div id="loading"><h1>CARREGANDO MÓDULO...</h1></div>
+    <iframe id="scene-frame" src=""></iframe>
+
+    <script src="js/system_core.js"></script>
+    <script>
+        // Flag para o system_core saber que esta é a tela do player
+        window.isPlayerView = true;
+
+        const frame = document.getElementById('scene-frame');
+        const loadScreen = document.getElementById('loading');
+
+        // Carrega a cena atual salva
+        if(globalState.current_scene) {
+            frame.src = globalState.current_scene;
+        } else {
+            frame.src = "index.html"; // Tela de título default
+        }
+
+        // Efeito simples de loading ao trocar de src
+        frame.onload = () => {
+            loadScreen.classList.remove('loading-active');
+        };
+
+        channel.addEventListener('message', (e) => {
+            if(e.data.type === 'NAVIGATE') {
+                loadScreen.classList.add('loading-active');
+                // O src muda via system_core, aqui só tratamos o visual
+            }
+        });
+    </script>
+</body>
+</html>

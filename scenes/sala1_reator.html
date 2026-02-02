@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>SALA 01: REATOR</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        /* ESTILOS ESPECÍFICOS DA CENA 1 */
+        #reactor-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            background: radial-gradient(circle at center, #1a001a 0%, #000 70%);
+        }
+
+        .reactor-title {
+            font-size: 4rem;
+            margin-bottom: 40px;
+            animation: text-pulse 3s infinite;
+        }
+
+        /* BARRA DE PROGRESSO */
+        .progress-frame {
+            width: 80%;
+            height: 50px;
+            border: 4px solid var(--tech-dim);
+            padding: 4px;
+            margin-bottom: 60px;
+            position: relative;
+            background: #000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: repeating-linear-gradient(
+                45deg,
+                var(--tech-primary),
+                var(--tech-primary) 10px,
+                var(--tech-dim) 10px,
+                var(--tech-dim) 20px
+            );
+            transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 0 20px var(--tech-primary);
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: #fff;
+            text-shadow: 2px 2px #000;
+            z-index: 2;
+        }
+
+        /* GRID DE CABOS */
+        .cables-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            width: 90%;
+        }
+
+        .cable-slot {
+            border: 2px solid var(--tech-dim);
+            background: rgba(0,0,0,0.8);
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .cable-id { font-size: 1.5rem; color: #888; margin-bottom: 10px; }
+        .cable-status { font-size: 1.2rem; font-weight: bold; text-align: center; }
+
+        /* ESTADOS DOS CABOS */
+        .cable-idle { border-color: #444; color: #555; }
+        
+        .cable-active {
+            border-color: var(--tech-primary);
+            box-shadow: 0 0 15px var(--tech-primary);
+            background: rgba(157, 0, 255, 0.1);
+        }
+        .cable-active .cable-status { color: var(--tech-primary); animation: blink 1s infinite; }
+
+        .cable-error {
+            border-color: var(--organic-alert);
+            box-shadow: 0 0 15px var(--organic-alert);
+            background: rgba(255, 0, 60, 0.1);
+        }
+        .cable-error .cable-status { color: var(--organic-alert); animation: glitch-anim 0.2s infinite; }
+
+        .cable-cooling {
+            border-color: #00ffff;
+            box-shadow: 0 0 15px #00ffff;
+            background: rgba(0, 255, 255, 0.05);
+        }
+        .cable-cooling .cable-status { color: #00ffff; text-shadow: 0 0 5px #00ffff; }
+
+        /* PAINEL ADMIN LOCAL */
+        #local-admin {
+            display: none;
+            position: fixed; top: 0; right: 0;
+            width: 320px; height: 100vh;
+            background: #0f000f;
+            border-left: 2px solid var(--tech-primary);
+            padding: 15px;
+            z-index: 2000;
+            opacity: 0.95;
+            overflow-y: auto;
+            font-family: 'Consolas', monospace;
+        }
+
+        /* ADMIN CONTROLS */
+        .adm-group { margin-bottom: 15px; border: 1px solid #333; padding: 10px; background: #050505; }
+        .adm-label { color: #888; font-size: 0.8rem; display: block; margin-bottom: 5px; }
+        
+        .val-input { 
+            background: #000; border: 1px solid var(--tech-primary); 
+            color: #fff; width: 60px; padding: 5px; text-align: center; 
+        }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .btn-small { padding: 5px; font-size: 0.65rem; }
+        
+        .bt-con { border-color: #0f0; color: #0f0; } .bt-con:hover { background: #0f0; color: #000; }
+        .bt-disc { border-color: #888; color: #888; } .bt-disc:hover { background: #888; color: #000; }
+        .bt-over { border-color: #f00; color: #f00; } .bt-over:hover { background: #f00; color: #000; }
+        .bt-cool { border-color: #0ff; color: #0ff; } .bt-cool:hover { background: #0ff; color: #000; }
+
+        @keyframes text-pulse { 0% { opacity: 0.8; } 50% { opacity: 1; text-shadow: 0 0 20px var(--tech-primary); } 100% { opacity: 0.8; } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="gm-helper" style="border-color: #00eaff; background: #001515; box-shadow: 0 0 60px rgba(0, 234, 255, 0.2);">
+        <h3 style="background: #00eaff; color: #000; text-align:center; margin-bottom:15px;">>>> GUIA TÁTICO: PROTOCOLO REATOR <<<</h3>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; max-height:60vh; overflow-y:auto; padding-right:10px;">
+            
+            <div style="border: 1px solid #00eaff; padding: 10px;">
+                <strong style="color:#00eaff; display:block; border-bottom:1px solid #004444; margin-bottom:5px;">[1] EXTRAIR BATERIA (Ação Padrão)</strong>
+                <small style="color:#aaa;">REQ: Adjacente à Horda + Cabo Conector.</small><br>
+                <span>TESTE: Luta/Atletismo (DT 20)</span>
+                <ul style="margin:5px 0; padding-left:20px; font-size:0.9rem; color:#eee;">
+                    <li><span style="color:#0f0;">SUCESSO:</span> Conecta um zumbi e chuta longe. <strong>Horda -50 PV</strong> (sem defesa).</li>
+                    <li><span style="color:#ffea00;">EFEITO:</span> Zumbi gera +20% Carga agora e +10%/rodada (explode em 2 rodadas).</li>
+                    <li><span style="color:#f00;">FALHA:</span> Jogador puxado p/ Horda (Agarrado).</li>
+                </ul>
+            </div>
+
+            <div style="border: 1px solid #00eaff; padding: 10px;">
+                <strong style="color:#00eaff; display:block; border-bottom:1px solid #004444; margin-bottom:5px;">[2] LOBOTOMIA DE HARDWARE (Ação Padrão)</strong>
+                <small style="color:#aaa;">REQ: Adjacente + Kit Tecnologia/Ferramenta.</small><br>
+                <span>TESTE: Tecnologia/Medicina (DT 20)</span>
+                <ul style="margin:5px 0; padding-left:20px; font-size:0.9rem; color:#eee;">
+                    <li><span style="color:#0f0;">SUCESSO:</span> Arranca núcleo explosivo.</li>
+                    <li><span style="color:#ffea00;">EFEITO:</span> Anula a próxima explosão da Horda ou Zumbi Bomba. Permite dano massivo seguro.</li>
+                </ul>
+            </div>
+
+            <div style="border: 1px solid #00eaff; padding: 10px;">
+                <strong style="color:#00eaff; display:block; border-bottom:1px solid #004444; margin-bottom:5px;">[3] BARREIRA HUMANA (Movimento/Padrão)</strong>
+                <small style="color:#aaa;">REQ: Escudo, Porta ou Treino em Fortitude.</small><br>
+                <span>TESTE: Fortitude (DT = Ataque da Horda)</span>
+                <ul style="margin:5px 0; padding-left:20px; font-size:0.9rem; color:#eee;">
+                    <li><span style="color:#0f0;">SUCESSO:</span> Bloqueia avanço físico da Horda naquela direção até o próximo turno.</li>
+                    <li><span style="color:#aaa;">USO:</span> Proteger quem está segurando cabos ou curando.</li>
+                </ul>
+            </div>
+        </div>
+        <br>
+        <button onclick="document.getElementById('gm-helper').style.display='none'" style="width:100%; border-color:#00eaff; color:#00eaff;">FECHAR GUIA</button>
+    </div>
+
+    <div id="reactor-container">
+        <h1 class="reactor-title">REATOR :: TESLA_V4</h1>
+
+        <div class="progress-frame">
+            <div class="progress-bar" id="p-bar"></div>
+            <div class="progress-text" id="p-text">0%</div>
+        </div>
+
+        <div class="cables-grid">
+            <div class="cable-slot" id="c1">
+                <div class="cable-id">>> CABO_01</div>
+                <div class="cable-status">[ AGUARDANDO ]</div>
+            </div>
+            <div class="cable-slot" id="c2">
+                <div class="cable-id">>> CABO_02</div>
+                <div class="cable-status">[ AGUARDANDO ]</div>
+            </div>
+            <div class="cable-slot" id="c3">
+                <div class="cable-id">>> CABO_03</div>
+                <div class="cable-status">[ AGUARDANDO ]</div>
+            </div>
+            <div class="cable-slot" id="c4">
+                <div class="cable-id">>> CABO_04</div>
+                <div class="cable-status">[ AGUARDANDO ]</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="local-admin">
+        <h4 style="margin:0 0 15px 0; color:#fff; border-bottom:1px solid #333; padding-bottom:5px;">CONTROLE DO REATOR</h4>
+        
+        <div class="adm-group">
+            <span class="adm-label">ENERGIA (ATUAL / MÁX)</span>
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input type="number" id="inp-curr" class="val-input" value="0">
+                <span style="color:#555">/</span>
+                <input type="number" id="inp-max" class="val-input" value="100">
+                <button onclick="updateValues()" style="padding:5px 10px; font-size:0.8rem;">SET</button>
+            </div>
+            <button onclick="resetSystem()" style="width:100%; font-size:0.7rem; border-color:#555; color:#aaa;">RESETAR TUDO</button>
+        </div>
+
+        <div id="cables-ctrl">
+            </div>
+    </div>
+
+    <script src="../js/system_core.js"></script>
+    <script>
+        const puzzleChannel = new BroadcastChannel('sala1_puzzle_sync');
+
+        let currentVal = 0;
+        let maxVal = 100;
+        let cableStates = { 1: 'idle', 2: 'idle', 3: 'idle', 4: 'idle' };
+
+        // --- INICIALIZAÇÃO ---
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.get('admin') === 'true') {
+            document.getElementById('local-admin').style.display = 'block';
+            generateCableControls();
+        }
+
+        // --- GERAÇÃO DOS BOTÕES DE CABO (ADMIN) ---
+        function generateCableControls() {
+            const container = document.getElementById('cables-ctrl');
+            container.innerHTML = '';
+            
+            for(let i=1; i<=4; i++) {
+                let html = `
+                    <div class="adm-group">
+                        <span class="adm-label">CABO 0${i}</span>
+                        <div class="btn-grid">
+                            <button class="btn-small bt-con" onclick="setCable(${i}, 'active')">CONECTAR</button>
+                            <button class="btn-small bt-disc" onclick="setCable(${i}, 'idle')">DESLIGAR</button>
+                            <button class="btn-small bt-over" onclick="setCable(${i}, 'error')">SOBRECARGA</button>
+                            <button class="btn-small bt-cool" onclick="setCable(${i}, 'cooling')">ESFRIANDO</button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += html;
+            }
+        }
+
+        // --- LÓGICA DE DADOS ---
+        function updateValues() {
+            currentVal = parseInt(document.getElementById('inp-curr').value);
+            maxVal = parseInt(document.getElementById('inp-max').value);
+            syncPuzzle();
+        }
+
+        function resetSystem() {
+            currentVal = 0;
+            maxVal = 100;
+            document.getElementById('inp-curr').value = 0;
+            document.getElementById('inp-max').value = 100;
+            for(let i=1; i<=4; i++) cableStates[i] = 'idle';
+            syncPuzzle();
+        }
+
+        function setCable(id, state) {
+            cableStates[id] = state;
+            syncPuzzle();
+        }
+
+        function syncPuzzle() {
+            let pct = 0;
+            if (maxVal > 0) pct = Math.floor((currentVal / maxVal) * 100);
+            if (pct > 100) pct = 100;
+
+            const state = { pct: pct, cables: cableStates };
+            puzzleChannel.postMessage(state);
+            renderPuzzle(state);
+        }
+
+        // --- HELPER DO MESTRE ---
+        channel.addEventListener('message', (e) => {
+            if (e.data.type === 'TOGGLE_HELPER') {
+                const h = document.getElementById('gm-helper');
+                h.style.display = h.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+
+        // --- ESCUTA SYNC ---
+        puzzleChannel.onmessage = (e) => {
+            renderPuzzle(e.data);
+        };
+
+        // --- RENDERIZAÇÃO ---
+        function renderPuzzle(data) {
+            // Barra
+            document.getElementById('p-bar').style.width = data.pct + '%';
+            document.getElementById('p-text').innerText = data.pct + '%';
+            
+            const title = document.querySelector('.reactor-title');
+            
+            if(data.pct >= 100) {
+                document.getElementById('p-text').innerText = "SISTEMA ESTÁVEL";
+                document.getElementById('p-bar').style.background = "#fff";
+                document.getElementById('p-bar').style.boxShadow = "0 0 50px #fff";
+                title.style.color = "#fff";
+                title.style.textShadow = "0 0 20px #fff";
+            } else {
+                // Reset visual caso baixe de 100
+                document.getElementById('p-bar').style.background = "";
+                document.getElementById('p-bar').style.boxShadow = "";
+                title.style.color = "";
+                title.style.textShadow = "";
+            }
+
+            // Cabos
+            for(let i=1; i<=4; i++) {
+                const el = document.getElementById('c' + i);
+                const status = el.querySelector('.cable-status');
+                const state = data.cables[i];
+
+                // Limpa classes
+                el.className = 'cable-slot';
+                
+                if(state === 'idle') {
+                    status.innerText = "[ DESCONECTADO ]";
+                    el.classList.add('cable-idle');
+                } else if(state === 'active') {
+                    status.innerText = ">>> TRANSMITINDO <<<";
+                    el.classList.add('cable-active');
+                } else if(state === 'error') {
+                    status.innerText = "!! SOBRECARGA !!";
+                    el.classList.add('cable-error');
+                } else if(state === 'cooling') {
+                    status.innerText = "~ RESFRIANDO ~";
+                    el.classList.add('cable-cooling');
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>PAINEL DE STATUS GERAL</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        body { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, #100010 0%, #000 90%);
+            overflow: hidden;
+        }
+
+        h1 { font-size: 3rem; margin-bottom: 40px; border-bottom: 2px solid var(--tech-primary); width: 80%; text-align: center; }
+
+        #grid-subjects {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        .subject-card {
+            background: rgba(10, 10, 15, 0.8);
+            border: 2px solid var(--tech-dim);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* STATUS VIVO */
+        .subject-card.alive { border-color: var(--tech-primary); }
+        .subject-card.alive .sub-name { color: #fff; text-shadow: 0 0 10px var(--tech-primary); }
+        .subject-card.alive .sub-status { color: #0f0; }
+
+        /* STATUS MORTO */
+        .subject-card.dead { border-color: #333; opacity: 0.6; filter: grayscale(1); }
+        .subject-card.dead .sub-name { text-decoration: line-through; color: #555; }
+        .subject-card.dead .sub-status { color: #f00; }
+
+        .sub-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; display: block; }
+        .sub-details { font-size: 0.9rem; color: #aaa; margin-top: 10px; border-top: 1px solid #333; padding-top: 10px; }
+        
+        .sickness-bar { width: 100%; height: 5px; background: #222; margin-top: 5px; }
+        .sickness-fill { height: 100%; background: var(--organic-alert); width: 0%; transition: width 0.5s; }
+
+        /* EFEITO GLITCH (Ezequiel) */
+        .glitch-mode .subject-card { animation: float 3s infinite ease-in-out; border-color: var(--ezequiel-glitch) !important; }
+        .glitch-mode h1 { color: var(--ezequiel-glitch); text-shadow: 2px 0 red; }
+
+        @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-5px); } 100% { transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <h1 id="main-title">MONITORAMENTO DE COBAIAS</h1>
+
+    <div id="grid-subjects">
+        </div>
+
+    <script src="../js/system_core.js"></script>
+    <script>
+        // INIT
+        function init() {
+            renderPanel();
+        }
+
+        // CHAMADO PELO SYSTEM_CORE QUANDO HÁ SYNC
+        // (Adicione essa chamada no system_core.js se quiser auto-update, 
+        // ou use o listener padrão abaixo)
+        const channelLocal = new BroadcastChannel('metamorfose_v1'); // Mesmo do system_core
+        channelLocal.onmessage = (e) => {
+            if (e.data.type === 'SYNC_STATE') {
+                globalState = e.data.payload;
+                renderPanel();
+            }
+        };
+
+        function renderPanel() {
+            const grid = document.getElementById('grid-subjects');
+            grid.innerHTML = '';
+
+            // Verifica se o modo Ezequiel está ativo (todas as chaves)
+            const isGlitch = globalState.ezequiel_keys[0] && globalState.ezequiel_keys[1] && globalState.ezequiel_keys[2];
+            if(isGlitch) document.body.classList.add('glitch-mode');
+            else document.body.classList.remove('glitch-mode');
+
+            globalState.players.forEach(p => {
+                let statusText = p.status === 'alive' ? "SINAIS VITAIS: ESTÁVEIS" : "SINAIS VITAIS: CESSADOS";
+                if(isGlitch) statusText = "ERRO: ALMA NÃO ENCONTRADA";
+
+                // Calcula barra de doença (1 a 6)
+                let sickPct = (p.sickness / 6) * 100;
+
+                let html = `
+                    <div class="subject-card ${p.status}">
+                        <span class="sub-name">${p.name}</span>
+                        <div class="sub-status">${statusText}</div>
+                        <div class="sub-details">
+                            <div>CONTAMINAÇÃO: ${p.sickness}/6</div>
+                            <div class="sickness-bar"><div class="sickness-fill" style="width:${sickPct}%"></div></div>
+                            <div style="margin-top:5px; color:var(--gold);">CRÉDITOS: ${p.points}</div>
+                        </div>
+                    </div>
+                `;
+                grid.innerHTML += html;
+            });
+        }
+
+        // Render inicial (espera carregar o state do localStorage no system_core)
+        setTimeout(renderPanel, 100);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>V.E.N.D.A. v3.00 [ROOT]</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        :root { --card-bg: #101015; --gold: #ffd700; --glitch: #00ff00; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* SIDEBAR */
+        #sidebar { flex: 1; background: #000; border-right: 2px solid var(--tech-primary); padding: 15px; display: flex; flex-direction: column; }
+        .sys-title { font-size: 1.5rem; color: var(--tech-primary); text-align: center; margin-bottom: 20px; text-shadow: 0 0 10px var(--tech-primary); border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        #wallets-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+        .p-wallet { background: #111; border: 1px solid #333; padding: 10px; display: flex; justify-content: space-between; cursor: pointer; transition: all 0.2s; }
+        .p-wallet:hover { background: #222; }
+        .p-wallet.active { border-color: var(--ezequiel-glitch); background: #001a1a; box-shadow: 0 0 10px rgba(0,234,255,0.2); }
+        .p-name { font-weight: bold; font-size: 0.85rem; }
+        .p-cash { color: var(--gold); font-weight: bold; }
+
+        /* NAV TABS */
+        #nav-bar { display: flex; background: #111; border-bottom: 1px solid #333; }
+        .nav-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; color: #666; font-weight: bold; border-right: 1px solid #333; transition: all 0.3s; background: #080808; }
+        .nav-tab:hover { background: #222; color: #fff; }
+        .nav-tab.active-tab { background: var(--bg-color); color: var(--tech-primary); border-bottom: 4px solid var(--tech-primary); text-shadow: 0 0 10px var(--tech-primary); }
+
+        /* MAIN CONTENT */
+        #main-content { flex: 3; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .view-section { flex: 1; padding: 20px; overflow-y: auto; display: none; }
+        .view-section.visible { display: block; animation: fadeIn 0.3s; }
+
+        /* SHOPPER BAR */
+        .shopper-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+        .active-shopper { font-size: 1.2rem; font-weight: bold; color: #fff; }
+        .active-val { font-size: 1.5rem; color: var(--gold); font-weight: bold; }
+
+        /* ITEM CARDS */
+        .category-title { font-size: 1.1rem; border-bottom: 1px solid var(--tech-primary); margin: 25px 0 10px 0; color: var(--tech-primary); text-transform: uppercase; letter-spacing: 2px; }
+        .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        
+        .item-card { 
+            background: var(--card-bg); border: 1px solid #333; padding: 10px; 
+            display: flex; flex-direction: column; justify-content: space-between; 
+            transition: transform 0.2s; position: relative;
+        }
+        .item-card:hover { border-color: var(--tech-primary); transform: translateY(-3px); }
+        .item-header { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .item-name { font-weight: bold; color: #fff; font-size: 0.9rem; }
+        .item-cost { color: var(--gold); font-weight: bold; }
+        .item-desc { font-size: 0.75rem; color: #aaa; margin-bottom: 8px; flex: 1; }
+        .item-type { font-size: 0.65rem; color: #666; text-transform: uppercase; margin-bottom: 5px; border: 1px solid #333; display: inline-block; padding: 2px; }
+
+        button.buy-btn { background: transparent; border: 1px solid var(--tech-primary); color: var(--tech-primary); padding: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: auto; }
+        button.buy-btn:hover { background: var(--tech-primary); color: #000; }
+        
+        /* INTEL FILES */
+        .file-card { 
+            border: 1px solid #333; background: #051005; padding: 15px; margin-bottom: 15px; 
+            position: relative; overflow: hidden; transition: all 0.3s;
+        }
+        .file-card.locked { border-color: #500; background: #100505; }
+        .file-card.unlocked { border-color: #0f0; background: #001500; box-shadow: 0 0 10px rgba(0,255,0,0.1); }
+        .file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .file-title { font-weight: bold; font-size: 1.1rem; }
+        .file-cost { color: var(--gold); font-weight: bold; }
+        .file-content { display: none; color: #aaa; font-size: 0.9rem; border-top: 1px dashed #333; padding-top: 10px; line-height: 1.4; }
+        .file-card.unlocked .file-content { display: block; }
+        .unlock-btn { background: #aa0000; color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; width: 100%; }
+        .unlock-btn:hover { background: #f00; }
+
+        /* GLITCH STYLES (EZEQUIEL) */
+        .glitch-cat { border-color: var(--glitch) !important; color: var(--glitch) !important; animation: shake 3s infinite; text-shadow: 2px 0 red, -2px 0 blue; }
+        .glitch-card { border: 1px dashed var(--glitch) !important; background: #000 !important; }
+        .glitch-name { font-family: monospace; color: var(--glitch) !important; text-shadow: 0 0 5px var(--glitch); font-size: 1.2rem !important; }
+        .glitch-cost { color: #fff !important; text-decoration: line-through; }
+        .glitch-btn { border-color: var(--glitch) !important; color: var(--glitch) !important; animation: flicker 0.2s infinite; }
+        .glitch-btn:hover { background: var(--glitch) !important; color: #000 !important; }
+
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        @keyframes flicker { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="gm-helper" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:60%; background:#001515; border:2px solid var(--tech-primary); padding:20px; z-index:3000;">
+        <h3 style="color:var(--tech-primary); text-align:center; border-bottom:1px solid var(--tech-primary); margin-top:0;">>>> PROTOCOLO DE VENDA <<<</h3>
+        <ul style="color:#ddd; padding-left:20px; font-size:0.9rem;">
+            <li><strong>PONTOS:</strong> Os jogadores ganharam pontos nos eventos anteriores.</li>
+            <li><strong>CORRUPÇÃO:</strong> Cada compra aumenta a corrupção do sistema (apenas narrativo por enquanto).</li>
+            <li><strong>EZEQUIEL:</strong> Se você ativou as 3 chaves no painel ADMIN, o item secreto aparece.</li>
+            <li><strong>DADOS (LORE):</strong> Compre os arquivos para liberar dicas sobre o Boss Final.</li>
+        </ul>
+        <button onclick="document.getElementById('gm-helper').style.display='none'" style="width:100%; margin-top:15px; border-color:var(--tech-primary); color:var(--tech-primary); background:#000; padding:10px;">FECHAR</button>
+    </div>
+
+    <div id="sidebar">
+        <div class="sys-title">V.E.N.D.A. v3.0</div>
+        <div id="wallets-list">
+            </div>
+        
+        <div style="margin-top:auto; height: 150px; overflow-y:auto; border-top:1px solid #333; padding-top:5px; font-size:0.7rem; color:#666;" id="sys-log">
+            > CONEXÃO ESTABELECIDA...
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="nav-bar">
+            <div class="nav-tab active-tab" onclick="switchTab('shop')">🛒 ARSENAL</div>
+            <div class="nav-tab" onclick="switchTab('intel')">📂 DADOS</div>
+        </div>
+
+        <div id="shop-view" class="view-section visible">
+            <div class="shopper-bar">
+                <div>
+                    <small style="color:#888;">AGENTE ATIVO:</small>
+                    <div class="active-shopper" id="shop-shopper">SELECIONE UM AGENTE</div>
+                </div>
+                <div class="active-val" id="shop-val">---</div>
+            </div>
+            <div id="catalog"></div>
+        </div>
+
+        <div id="intel-view" class="view-section">
+            <div class="shopper-bar">
+                <div>
+                    <small style="color:#888;">PAGADOR:</small>
+                    <div class="active-shopper" id="intel-shopper">SELECIONE UM AGENTE</div>
+                </div>
+                <div class="active-val" id="intel-val">---</div>
+            </div>
+            <div style="color:#0f0; margin-bottom:15px; font-size:0.8rem;">> ALGUNS ARQUIVOS ESTÃO CRIPTOGRAFADOS. PAGAMENTO NECESSÁRIO.</div>
+            <div id="files-list"></div>
+        </div>
+    </div>
+
+    <script src="../js/system_core.js"></script>
+    <script>
+        const localChannel = new BroadcastChannel('sala4_loja_local');
+
+        // ESTADO LOCAL DA LOJA
+        let activePlayerId = 0;
+        let currentTab = 'shop';
+        let unlockedFiles = [];
+        
+        // ITENS DO MERCADO
+        const inventory = {
+            "ARMAS DESCARTÁVEIS": [
+                { id: "w1", name: "Granada de Plasma", cost: 30, desc: "Dano massivo de Energia (6d6) em área curta.", type: "CONSUMÍVEL" },
+                { id: "w2", name: "Dardo Tranquilizante", cost: 25, desc: "Se acertar, alvo fica Atordoado 1 rodada.", type: "MUNIÇÃO ÚNICA" },
+                { id: "w3", name: "Mina de Proximidade", cost: 35, desc: "Explode (8d6 Balístico) se alguém pisar.", type: "ARMADILHA" }
+            ],
+            "DEFESA DE EMERGÊNCIA": [
+                { id: "d1", name: "Injeção Pele-Ferro", cost: 25, desc: "RD 10 para tudo até o fim da cena.", type: "SERINGA" },
+                { id: "d2", name: "Gerador de Campo", cost: 40, desc: "Absorve 100% de dano de UM ataque.", type: "DISPOSITIVO" },
+                { id: "d3", name: "Spray de Fumaça", cost: 20, desc: "Cria camuflagem total na área por 2 rodadas.", type: "GRANADA" }
+            ],
+            "SUPORTE MÉDICO": [
+                { id: "h1", name: "Estimulante Cardíaco", cost: 50, desc: "Revive um aliado morrendo com 1 PV.", type: "SERINGA" },
+                { id: "h2", name: "Gel Regenerativo", cost: 30, desc: "Cura 4d8+4 PV instantaneamente.", type: "MEDKIT" },
+                { id: "h3", name: "Pílula de Foco", cost: 25, desc: "Recupera 2d6+4 de Determinação.", type: "DROGA" }
+            ],
+            "BUFFS TEMPORÁRIOS": [
+                { id: "p1", name: "Chip de Reflexo", cost: 35, desc: "Recebe +1 Ação de Movimento por 3 rodadas.", type: "NEURAL" },
+                { id: "p2", name: "Lente de Mira", cost: 30, desc: "+5 em Testes de Ataque nesta cena.", type: "ÓTICO" },
+                { id: "p3", name: "Soro de Hércules", cost: 30, desc: "+1d6 em todo dano corpo a corpo (Cena).", type: "SERINGA" }
+            ]
+        };
+
+        const intelFiles = [
+            { id: "f1", title: "RELATORIO_ESTRUTURAL.bio", cost: 20, content: "O Protótipo 03 tem blindagem pesada contra BALAS. <br>Entretanto, os tecidos orgânicos expostos entram em necrose imediata com energia de MORTE. FOGO também é eficaz para superaquecer os sistemas." },
+            { id: "f2", title: "MEMO_CAMUFLAGEM.msg", cost: 30, content: "ALERTA: A criatura possui camuflagem óptica ativa. <br>Ela ficará invisível se não atacar. Óculos térmicos ou ataques de área são a única forma de revelar a posição dela antes do ataque." },
+            { id: "f3", title: "AVISO_VIRUS.log", cost: 25, content: "O ferrão injeta um vírus digital. Se você for agarrado, seu sistema nervoso será hackeado. Agentes com baixa Vontade atacarão os aliados. Mantenham distância do ferrão." },
+            { id: "f4", title: "PROTOCOLO_OMEGA.dat", cost: 50, content: "CRÍTICO: O reator da criatura não tem failsafe. <br>No momento da morte do hospedeiro, o núcleo detonará numa explosão de Energia de 9 metros. <br>ORDEM: CORRAM ASSIM QUE ELA CAIR." }
+        ];
+
+        // INIT
+        function init() {
+            // Verifica arquivos desbloqueados salvos localmente (para persistência na sessão)
+            let savedFiles = localStorage.getItem('unlocked_files');
+            if(savedFiles) unlockedFiles = JSON.parse(savedFiles);
+
+            updateLocalUI();
+        }
+
+        // CHAMADO PELO SYSTEM_CORE QUANDO O ESTADO MUDA
+        window.updateLocalUI = function() {
+            renderWallets();
+            renderShop();
+            renderFiles();
+            renderActivePlayerInfo();
+        };
+
+        // --- RENDERIZADORES ---
+        function renderWallets() {
+            const list = document.getElementById('wallets-list');
+            list.innerHTML = '';
+            globalState.players.forEach(p => {
+                if(p.status === 'dead') return; // Mortos não compram
+                let activeClass = p.id === activePlayerId ? 'active' : '';
+                list.innerHTML += `
+                    <div class="p-wallet ${activeClass}" onclick="setActivePlayer(${p.id})">
+                        <span class="p-name">${p.name}</span>
+                        <span class="p-cash">${p.points} ¢</span>
+                    </div>`;
+            });
+        }
+
+        function renderActivePlayerInfo() {
+            const p = globalState.players.find(x => x.id === activePlayerId);
+            const name = p ? p.name : "SELECIONE UM AGENTE";
+            const val = p ? p.points + " ¢" : "---";
+            
+            document.getElementById('shop-shopper').innerText = name;
+            document.getElementById('shop-val').innerText = val;
+            document.getElementById('intel-shopper').innerText = name;
+            document.getElementById('intel-val').innerText = val;
+        }
+
+        function renderShop() {
+            const el = document.getElementById('catalog');
+            el.innerHTML = '';
+            for(const [cat, items] of Object.entries(inventory)) {
+                let html = `<div class="category-title">${cat}</div><div class="items-grid">`;
+                items.forEach(item => {
+                    html += `
+                        <div class="item-card">
+                            <div>
+                                <div class="item-header"><span class="item-name">${item.name}</span><span class="item-cost">${item.cost}</span></div>
+                                <span class="item-type">${item.type}</span>
+                                <div class="item-desc">${item.desc}</div>
+                            </div>
+                            <button class="buy-btn" onclick="buyItem('${item.id}', ${item.cost}, '${item.name}')">ADQUIRIR</button>
+                        </div>`;
+                });
+                html += `</div>`;
+                el.innerHTML += html;
+            }
+
+            // ITEM EZEQUIEL (SE AS 3 CHAVES ESTIVEREM ATIVAS)
+            if(globalState.ezequiel_keys[0] && globalState.ezequiel_keys[1] && globalState.ezequiel_keys[2]) {
+                let html = `<div class="category-title glitch-cat">ERRO_SISTEMA_404</div><div class="items-grid">`;
+                html += `
+                    <div class="item-card glitch-card">
+                        <div>
+                            <div class="item-header">
+                                <span class="item-name glitch-name" id="ez-name">EZEQUIEL</span>
+                                <span class="item-cost glitch-cost">GRÁTIS</span>
+                            </div>
+                            <span class="item-type" style="border-color:#0f0; color:#0f0;">PARADOXO</span>
+                            <div class="item-desc" style="color:#0f0;">IGNORAR REGRAS.<br>REESCREVER REALIDADE.<br>SACRIFÍCIO NECESSÁRIO.</div>
+                        </div>
+                        <button class="buy-btn glitch-btn" onclick="buyEzequiel()">ACEITAR</button>
+                    </div></div>`;
+                el.innerHTML += html;
+                startGlitchEffect();
+            }
+        }
+
+        function renderFiles() {
+            const list = document.getElementById('files-list');
+            list.innerHTML = '';
+            intelFiles.forEach(f => {
+                const isUnlocked = unlockedFiles.includes(f.id);
+                let html = `
+                    <div class="file-card ${isUnlocked ? 'unlocked' : 'locked'}">
+                        <div class="file-header">
+                            <span class="file-title">📄 ${f.title}</span>
+                            <span class="file-cost">${isUnlocked ? 'ABERTO' : 'PTS: ' + f.cost}</span>
+                        </div>`;
+                if(isUnlocked) {
+                    html += `<div class="file-content">${f.content}</div>`;
+                } else {
+                    html += `<button class="unlock-btn" onclick="buyFile('${f.id}', ${f.cost})">DESCRIPTOGRAFAR (PAGAR ${f.cost})</button>`;
+                }
+                html += `</div>`;
+                list.innerHTML += html;
+            });
+        }
+
+        // --- AÇÕES ---
+        function setActivePlayer(id) {
+            activePlayerId = id;
+            updateLocalUI();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active-tab'));
+            document.querySelectorAll('.view-section').forEach(d => d.classList.remove('visible'));
+            
+            if(tab === 'shop') {
+                document.querySelector('.nav-tab:nth-child(1)').classList.add('active-tab');
+                document.getElementById('shop-view').classList.add('visible');
+            } else {
+                document.querySelector('.nav-tab:nth-child(2)').classList.add('active-tab');
+                document.getElementById('intel-view').classList.add('visible');
+            }
+        }
+
+        function buyItem(id, cost, name) {
+            const pIndex = globalState.players.findIndex(x => x.id === activePlayerId);
+            if(pIndex === -1) return alert("Selecione um agente primeiro.");
+            
+            const p = globalState.players[pIndex];
+            if(p.points >= cost) {
+                p.points -= cost;
+                saveState(); // Salva globalmente
+                addLog(`${p.name} comprou [${name}].`);
+                updateLocalUI();
+            } else {
+                alert("CRÉDITOS INSUFICIENTES.");
+            }
+        }
+
+        function buyFile(fileId, cost) {
+            const pIndex = globalState.players.findIndex(x => x.id === activePlayerId);
+            if(pIndex === -1) return alert("Selecione um agente pagador.");
+            
+            const p = globalState.players[pIndex];
+            if(p.points >= cost) {
+                p.points -= cost;
+                unlockedFiles.push(fileId);
+                localStorage.setItem('unlocked_files', JSON.stringify(unlockedFiles));
+                saveState();
+                addLog(`${p.name} liberou arquivo de inteligência.`);
+                updateLocalUI();
+            } else {
+                alert("CRÉDITOS INSUFICIENTES.");
+            }
+        }
+
+        function buyEzequiel() {
+            const pIndex = globalState.players.findIndex(x => x.id === activePlayerId);
+            if(pIndex === -1) return alert("Quem aceita o fardo?");
+            
+            const p = globalState.players[pIndex];
+            addLog(`!!! ${p.name} ACEITOU O PARADOXO DE EZEQUIEL !!!`);
+            // Aqui você poderia ativar uma flag global se quisesse
+            alert("VOCÊ AGORA CARREGA O VÍRUS DA REALIDADE. USE NA BATALHA FINAL.");
+        }
+
+        function addLog(msg) {
+            const log = document.getElementById('sys-log');
+            log.innerHTML = `> ${msg}<br>` + log.innerHTML;
+        }
+
+        // --- GLITCH VISUAL ---
+        let glitchInterval;
+        function startGlitchEffect() {
+            if(glitchInterval) clearInterval(glitchInterval);
+            const chars = ['E','3','Z','2','Q','0','U','L','1','!','?','&'];
+            
+            glitchInterval = setInterval(() => {
+                const el = document.getElementById('ez-name');
+                if(!el) return;
+                let newName = "";
+                let base = "EZEQUIEL";
+                for(let i=0; i<base.length; i++) {
+                    if(Math.random() > 0.6) newName += chars[Math.floor(Math.random()*chars.length)];
+                    else newName += base[i];
+                }
+                el.innerText = newName;
+            }, 100);
+        }
+
+        // HELPER
+        channel.addEventListener('message', (e) => {
+            if (e.data.type === 'TOGGLE_HELPER') {
+                const h = document.getElementById('gm-helper');
+                h.style.display = h.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+
+        // INIT
+        init();
+
+    </script>
+</body>
+</html>

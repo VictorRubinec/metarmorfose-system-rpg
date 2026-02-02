@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>MESA DE SOM LOCAL :: METAMORFOSE</title>
+    <link rel="stylesheet" href="css/style_global.css">
+    <style>
+        body { background-color: #050005; color: #ddd; font-family: 'Consolas', monospace; padding: 10px; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow-y: auto; }
+        h2 { color: #9d00ff; border-bottom: 2px solid #4b007d; width: 100%; text-align: center; padding-bottom: 5px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        #mixer-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 1100px; }
+        
+        .deck { background: #0f0f12; border: 1px solid #222; border-left: 4px solid #555; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); }
+        .deck-music { border-left-color: #9d00ff; }
+        .deck-sfx { border-left-color: #ff003c; }
+
+        .deck-title { font-weight: bold; font-size: 0.9rem; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+        
+        .video-slot { width: 100%; height: 150px; background: #000; border: 1px solid #333; position: relative; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Barra de Navegação */
+        .nav-bar { 
+            width: 100%; height: 10px; background: #1a1a1a; 
+            cursor: pointer; position: relative; border: 1px solid #333; margin-top: 5px;
+        }
+        .nav-fill { height: 100%; width: 0%; background: #9d00ff; pointer-events: none; transition: width 0.1s linear; }
+        .deck-sfx .nav-fill { background: #ff003c; }
+        
+        .time-info { display: flex; justify-content: space-between; font-size: 0.7rem; color: #888; font-family: monospace; }
+
+        .controls { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+        button { background: #1a1a1a; color: #ccc; border: 1px solid #444; padding: 8px; cursor: pointer; font-weight: bold; font-size: 0.7rem; flex: 1; }
+        button:hover { background: #333; border-color: #fff; }
+
+        select { background: #000; border: 1px solid #333; color: #ccc; padding: 5px; width: 100%; cursor: pointer; }
+        
+        .vol-row { display: flex; align-items: center; gap: 10px; font-size: 0.7rem; color: #666; }
+        input[type=range] { flex: 1; accent-color: #9d00ff; cursor: pointer; }
+
+        .marker-tag { background: #111; border: 1px solid #333; color: #00eaff; padding: 2px 6px; font-size: 0.65rem; cursor: pointer; margin-right: 4px; display: inline-block; }
+    </style>
+</head>
+<body>
+
+    <h2>🎛️ RACK LOCAL COM NAVEGAÇÃO</h2>
+
+    <div id="mixer-container">
+        <div id="deck-area" style="display: contents;"></div>
+    </div>
+
+    <script>
+        const musicas = [
+            { id: "intro_1", label: "Intro - Faixa 1" }, { id: "intro_2", label: "Intro - Faixa 2" }, { id: "intro_3", label: "Intro - Faixa 3" },
+            { id: "tensao_virus", label: "Tensão - Vírus" }, { id: "sala1_inativa", label: "Sala 1 - Inativa" }, { id: "sala1_ativa", label: "Sala 1 - Ativa" },
+            { id: "npc_transf_1", label: "NPC Transf 1" }, { id: "npc_transf_2", label: "NPC Transf 2" }, { id: "sala2_tensao", label: "Sala 2 - Labirinto" },
+            { id: "sala2_fuga", label: "Sala 2 - Fuga" }, { id: "sala3_timer_1", label: "Sala 3 - Timer 1" }, { id: "sala3_timer_2", label: "Sala 3 - Timer 2" },
+            { id: "sala3_combate", label: "Sala 3 - Bicho Solto" }, { id: "sala4_rp", label: "Sala 4 - Tranquila" }, { id: "sala4_hack", label: "Sala 4 - Hack Ezequiel" },
+            { id: "sala5_boss", label: "Sala 5 - BOSS" }, { id: "tema_ezequiel", label: "Tema Ezequiel" }, { id: "melancolica", label: "Melancólica" }, { id: "finalizacao", label: "Finalização" }
+        ];
+
+        const container = document.getElementById('deck-area');
+        const deckIds = ['A', 'B', 'C', 'D'];
+
+        deckIds.forEach((id, index) => {
+            const typeClass = (index % 2 === 0) ? 'deck-music' : 'deck-sfx';
+            container.innerHTML += `
+                <div class="deck ${typeClass}">
+                    <div class="deck-title">CANAL ${id} <span id="cur-file-${id}" style="font-size:0.6rem; color:#555;">---</span></div>
+                    <select onchange="loadLocalVideo('${id}', this.value)">
+                        <option value="">📂 SELECIONAR FAIXA...</option>
+                        ${musicas.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+                    </select>
+                    <div class="video-slot"><video id="v-${id}" loop></video></div>
+                    
+                    <div class="nav-bar" onclick="manualSeek('${id}', event)">
+                        <div class="nav-fill" id="fill-${id}"></div>
+                    </div>
+                    <div class="time-info">
+                        <span id="time-cur-${id}">00:00</span>
+                        <span id="time-dur-${id}">00:00</span>
+                    </div>
+
+                    <div class="controls">
+                        <button onclick="playVideo('${id}')">▶</button>
+                        <button onclick="pauseVideo('${id}')">⏸</button>
+                        <button onclick="stopVideo('${id}')">⏹</button>
+                        <button onclick="addMarker('${id}')" style="background:#222; border-color:#00eaff; color:#00eaff;">+MARK</button>
+                    </div>
+                    <div class="vol-row">
+                        <span>VOL</span>
+                        <input type="range" min="0" max="100" value="70" oninput="setVol('${id}', this.value)">
+                    </div>
+                    <div id="markers-${id}" style="margin-top:5px; overflow-x:auto; white-space:nowrap;"></div>
+                </div>
+            `;
+        });
+
+        function loadLocalVideo(deck, fileName) {
+            if(!fileName) return;
+            const v = document.getElementById('v-' + deck);
+            v.src = `assets/video/${fileName}.mp4`;
+            document.getElementById('cur-file-' + deck).innerText = fileName + ".mp4";
+            v.load();
+            
+            // Atualiza duração quando o vídeo carregar
+            v.onloadedmetadata = () => {
+                document.getElementById('time-dur-' + deck).innerText = formatTime(v.duration);
+            };
+
+            // Loop de atualização de tempo
+            v.ontimeupdate = () => {
+                const pct = (v.currentTime / v.duration) * 100;
+                document.getElementById('fill-' + deck).style.width = pct + "%";
+                document.getElementById('time-cur-' + deck).innerText = formatTime(v.currentTime);
+            };
+        }
+
+        // Navegação manual ao clicar na barra
+        function manualSeek(deck, event) {
+            const v = document.getElementById('v-' + deck);
+            const bar = event.currentTarget;
+            const rect = bar.getBoundingClientRect();
+            const pct = (event.clientX - rect.left) / rect.width;
+            v.currentTime = v.duration * pct;
+        }
+
+        function playVideo(deck) { document.getElementById('v-' + deck).play(); }
+        function pauseVideo(deck) { document.getElementById('v-' + deck).pause(); }
+        function stopVideo(deck) { 
+            const v = document.getElementById('v-' + deck);
+            v.pause(); v.currentTime = 0; 
+        }
+        function setVol(deck, val) { document.getElementById('v-' + deck).volume = val / 100; }
+
+        function formatTime(s) {
+            const min = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            return (min < 10 ? "0" + min : min) + ":" + (sec < 10 ? "0" + sec : sec);
+        }
+
+        // Função de marcadores para pular em partes específicas da música
+        function addMarker(deck) {
+            const v = document.getElementById('v-' + deck);
+            if(v.currentTime === 0) return;
+            const time = v.currentTime;
+            const container = document.getElementById('markers-' + deck);
+            const btn = document.createElement('span');
+            btn.className = 'marker-tag';
+            btn.innerText = "📍 " + formatTime(time);
+            btn.onclick = () => { v.currentTime = time; };
+            container.appendChild(btn);
+        }
+    </script>
+</body>
+</html>

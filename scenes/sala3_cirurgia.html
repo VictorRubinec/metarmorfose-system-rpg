@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>SALA 03: INTERAÇÃO TOTAL</title>
+    <link rel="stylesheet" href="../css/style_global.css">
+    <style>
+        /* LAYOUT */
+        body { display: flex; height: 100vh; overflow: hidden; background: #000; }
+        
+        #left-panel { 
+            flex: 2; border-right: 4px solid var(--tech-dim); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background: radial-gradient(circle at center, #100010 0%, #000 80%);
+            position: relative; 
+        }
+        
+        #right-panel { 
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+            background: #050005; padding-top: 30px; border-left: 2px solid #220022; 
+            box-shadow: inset 10px 0 50px rgba(0,0,0,0.8);
+        }
+
+        /* PUZZLE (SIMON) */
+        h1 { margin-bottom: 20px; text-align: center; border: none; }
+        
+        #game-board {
+            display: grid; gap: 15px; padding: 20px;
+            pointer-events: none; opacity: 0.3; transition: opacity 0.5s;
+            max-width: 90vh; max-height: 90vh;
+        }
+
+        .simon-btn { 
+            border-radius: 10px; border: 3px solid #333; 
+            cursor: pointer; transition: transform 0.1s, filter 0.1s;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.9);
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold; color: rgba(255,255,255,0.5); font-size: 1.5rem;
+            background-color: #111; /* Fallback */
+        }
+        .simon-btn:active { transform: scale(0.95); }
+        
+        /* Brilho Intenso ao Ativar */
+        .lit { 
+            filter: brightness(2.5) contrast(1.2); 
+            box-shadow: 0 0 50px currentColor !important; 
+            border-color: #fff !important; 
+            z-index: 10; color: #fff; 
+        }
+
+        #puzzle-status { 
+            margin-top: 20px; font-size: 1.5rem; font-weight: bold; 
+            color: var(--text-main); text-align: center; height: 30px; letter-spacing: 2px; text-shadow: 0 0 10px var(--tech-primary);
+        }
+
+        /* TIMER & STATUS */
+        .timer-label { font-size: 1.2rem; color: var(--organic-alert); letter-spacing: 5px; margin-bottom: 5px; opacity: 0.8; }
+        
+        #timer-display { 
+            font-size: 6rem; font-family: 'Consolas', monospace; font-weight: bold; 
+            color: #400; text-shadow: 0 0 5px #500; line-height: 1; transition: color 0.3s;
+        }
+        .timer-active { color: var(--organic-alert) !important; text-shadow: 0 0 30px var(--organic-alert) !important; animation: pulse-red 1s infinite; }
+        .timer-safe { color: #0f0 !important; text-shadow: 0 0 20px #0f0 !important; }
+
+        .cage-status { 
+            margin-top: 30px; padding: 15px; border: 2px solid var(--organic-alert); 
+            background: rgba(50, 0, 0, 0.3); width: 80%; text-align: center; 
+        }
+        .cage-text { font-size: 1.8rem; color: #fff; font-weight: bold; text-transform: uppercase; }
+
+        /* LOG DE AMBIENTE */
+        #env-log {
+            margin-top: 20px; width: 85%; height: 200px; 
+            background: #000; border: 1px solid var(--tech-dim); 
+            overflow-y: auto; padding: 10px; font-family: 'Courier New', monospace; font-size: 0.8rem; color: #aaa;
+        }
+        .env-msg { margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+        .env-good { color: #0f0; } .env-bad { color: var(--organic-alert); } .env-neu { color: var(--tech-primary); }
+
+        /* ADMIN PANEL LOCAL */
+        #local-admin {
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 300px;
+            background: #0a000a; border-top: 4px solid var(--tech-primary); z-index: 2000; padding: 15px;
+            grid-template-columns: 1fr 1fr 1fr; gap: 20px; box-shadow: 0 -10px 50px rgba(0,0,0,0.8);
+        }
+        
+        .adm-col { border-right: 1px solid #333; padding-right: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .adm-btn { padding: 10px; background: #111; color: #fff; border: 1px solid #555; font-weight: bold; font-size: 0.8rem; text-align: left; transition: all 0.2s; }
+        .adm-btn:hover { background: var(--tech-dim); border-color: var(--tech-primary); }
+        
+        .bt-timer { border-color: #0f0; color: #0f0; }
+        .bt-puzzle { border-color: var(--tech-primary); color: var(--tech-primary); }
+        .bt-env { border-color: var(--ezequiel-glitch); color: var(--ezequiel-glitch); }
+        .bt-dmg { border-color: var(--organic-alert); color: var(--organic-alert); }
+
+        /* TELAS FINAIS */
+        .overlay { position: absolute; top:0; left:0; width:100%; height:100%; display:none; justify-content:center; align-items:center; flex-direction:column; z-index:100; }
+        #win-screen { background: #000; border: 20px solid #0f0; }
+        #lose-screen { background: #300; border: 20px solid #f00; }
+
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    </style>
+</head>
+<body>
+
+    <div id="gm-helper" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:60%; background:#001515; border:2px solid var(--tech-primary); padding:20px; z-index:3000; box-shadow:0 0 50px rgba(157, 0, 255, 0.2);">
+        <h3 style="color:var(--tech-primary); text-align:center; border-bottom:1px solid var(--tech-primary); margin-top:0;">>>> PROTOCOLO DE INTERAÇÃO <<<</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; color:#ddd; font-size:0.9rem;">
+            <div>
+                <strong style="color:#0f0">MECÂNICA (PUZZLE)</strong>
+                <ul style="padding-left:20px;">
+                    <li><strong>OBJETIVO:</strong> Completar 4 fases de memória.</li>
+                    <li><strong>COMO JOGAR:</strong> O sistema mostra a sequência. O jogador repete.</li>
+                    <li><strong>ERRO:</strong> O tempo diminui em <strong>-15s</strong>.</li>
+                    <li><strong>TEMPO:</strong> Se chegar a 00:00, o Monstro escapa.</li>
+                </ul>
+            </div>
+            <div>
+                <strong style="color:var(--ezequiel-glitch)">AÇÕES DE SUPORTE (OUTROS JOGADORES)</strong>
+                <ul style="padding-left:20px;">
+                    <li><strong>NITROGÊNIO:</strong> Resfria o sistema (+15s de Tempo).</li>
+                    <li><strong>ADRENALINA:</strong> Cria um escudo mental (Ignora 1 Erro).</li>
+                    <li><strong>HACK:</strong> Reinicia drivers da porta (+30s de Tempo).</li>
+                    <li><strong>HOLOFOTE:</strong> Cega a criatura (Narrativo).</li>
+                </ul>
+            </div>
+        </div>
+        <button onclick="document.getElementById('gm-helper').style.display='none'" style="width:100%; margin-top:15px; border-color:var(--tech-primary); color:var(--tech-primary); background:#000; padding:10px;">FECHAR</button>
+    </div>
+
+    <div id="left-panel">
+        <h1 id="level-title" style="color:var(--tech-primary)">FASE 1: INICIALIZAÇÃO</h1>
+        <div id="game-board"></div>
+        <div id="puzzle-status">SISTEMA EM ESPERA...</div>
+    </div>
+
+    <div id="right-panel">
+        <div class="timer-label">COLAPSO EM</div>
+        <div id="timer-display">00:00</div>
+        
+        <div class="cage-status">
+            <small style="color:#aaa">STATUS DA CONTENÇÃO</small>
+            <div class="cage-text" id="cage-txt">TRANCADO</div>
+        </div>
+
+        <div style="margin-top:30px; text-align:center; color:#555;">
+            <div>PROGRESSO DA CRIPTOGRAFIA</div>
+            <div id="phase-display" style="font-size:3rem; color:#fff; font-weight:bold;">1/4</div>
+        </div>
+
+        <div style="margin-top:auto; color:var(--tech-primary); width:85%;">LOG DE SISTEMA</div>
+        <div id="env-log">> CONSOLE DE SUPORTE ONLINE...</div>
+    </div>
+
+    <div id="win-screen" class="overlay"><h1 style="color:#0f0; font-size:5rem;">SISTEMA LIBERADO</h1></div>
+    <div id="lose-screen" class="overlay"><h1 style="color:#fff; font-size:5rem;">FALHA DE CONTENÇÃO</h1></div>
+
+    <div id="local-admin">
+        <div class="adm-col">
+            <h4 style="margin:0; color:#aaa;">CONTROLE GERAL</h4>
+            <button class="adm-btn bt-timer" onclick="adminStartTimer()">▶ INICIAR TIMER</button>
+            <button class="adm-btn bt-puzzle" onclick="adminStartPuzzle()">🧠 INICIAR SEQUÊNCIA</button>
+            <button class="adm-btn" onclick="adminReset()" style="background:#800; border-color:#f00;">⚠️ RESETAR TUDO</button>
+            <div style="margin-top:5px; display:flex; gap:5px;">
+                <input type="number" id="start-time-input" value="300" style="width:60px; background:#000; color:#fff; border:1px solid #555; text-align:center;"> 
+                <button class="adm-btn" onclick="setTimer()" style="flex:1;">SET TEMPO</button>
+            </div>
+        </div>
+        
+        <div class="adm-col">
+            <h4 style="margin:0; color:var(--ezequiel-glitch);">SUPORTE (AMBIENTE)</h4>
+            <button class="adm-btn bt-env" onclick="envAction('nitro')">❄️ NITROGÊNIO (+15s)</button>
+            <button class="adm-btn bt-env" onclick="envAction('adrenalina')">💉 ADRENALINA (Escudo)</button>
+            <button class="adm-btn bt-env" onclick="envAction('hack')">⚡ HACK (+30s)</button>
+            <button class="adm-btn bt-env" onclick="envAction('blind')">💡 HOLOFOTE (Cegar)</button>
+            <button class="adm-btn bt-dmg" onclick="envAction('damage')">💥 DANO/FALHA (-15s)</button>
+        </div>
+
+        <div class="adm-col" style="border:none;">
+            <h4 style="margin:0; color:#aaa;">DEBUG / FASES</h4>
+            <div style="display:flex; gap:2px; margin-bottom:10px;">
+                <button class="adm-btn" onclick="forceLevel(1)" style="flex:1">1</button>
+                <button class="adm-btn" onclick="forceLevel(2)" style="flex:1">2</button>
+                <button class="adm-btn" onclick="forceLevel(3)" style="flex:1">3</button>
+                <button class="adm-btn" onclick="forceLevel(4)" style="flex:1">4</button>
+            </div>
+            <button class="adm-btn" onclick="broadcastWin()" style="background:#060; border-color:#0f0;">FORÇAR VITÓRIA</button>
+            <button class="adm-btn" onclick="broadcastLose()" style="background:#600; border-color:#f00;">FORÇAR DERROTA</button>
+        </div>
+    </div>
+
+    <script src="../js/system_core.js"></script>
+    <script>
+        const localChannel = new BroadcastChannel('sala3_cenario_vFinal');
+
+        // CONFIGURAÇÃO DAS FASES
+        const levelsConfig = {
+            1: { rows: 2, cols: 2, count: 4, seqLen: 3, title: "FASE 1: CALIBRAÇÃO", size: "150px" },
+            2: { rows: 1, cols: 4, count: 4, seqLen: 5, title: "FASE 2: REORDENAMENTO", size: "100px" },
+            3: { rows: 3, cols: 3, count: 9, seqLen: 7, title: "FASE 3: COMPLEXIDADE", size: "80px" },
+            4: { rows: 4, cols: 4, count: 16, seqLen: 10, title: "FASE 4: SOBRECARGA", size: "60px", unique: true }
+        };
+
+        let currentLevel = 1;
+        let currentTime = 300;
+        let isRunning = false;
+        let adminInterval = null;
+        let sequence = [];
+        let playerStep = 0;
+        let puzzleActive = false;
+        let canClick = false;
+        let shieldActive = false;
+
+        // INICIALIZAÇÃO ADMIN
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAdmin = urlParams.get('admin') === 'true';
+        if(isAdmin) {
+            document.getElementById('local-admin').style.display = 'grid';
+            // Admin pode clicar para demonstrar ou testar
+            document.getElementById('game-board').style.pointerEvents = "auto";
+            document.getElementById('game-board').style.opacity = "1";
+        }
+
+        // --- INTERAÇÕES DE CENÁRIO ---
+        function envAction(type) {
+            let msg = "";
+            let timeMod = 0;
+            let style = "env-neu";
+
+            if(type === 'nitro') { msg = "VÁLVULA ABERTA: SISTEMA RESFRIADO (+15s)"; timeMod = 15; style = "env-good"; }
+            if(type === 'adrenalina') { msg = "INJEÇÃO APLICADA: MENTE ESTABILIZADA (Escudo)"; style = "env-good"; localChannel.postMessage({ type: 'SHIELD_UP' }); }
+            if(type === 'hack') { msg = "HACK BEM SUCEDIDO: REINICIANDO PORTA (+30s)"; timeMod = 30; style = "env-good"; }
+            if(type === 'blind') { msg = "HOLOFOTE ATIVO: ALVO CEGADO."; style = "env-neu"; }
+            if(type === 'damage') { msg = "ERRO CRÍTICO / DANO NO SISTEMA (-15s)"; timeMod = -15; style = "env-bad"; }
+
+            if(timeMod !== 0) modifyTime(timeMod);
+            
+            addLog(msg, style);
+            localChannel.postMessage({ type: 'LOG', msg: msg, style: style });
+        }
+
+        function addLog(text, style) {
+            const box = document.getElementById('env-log');
+            const div = document.createElement('div');
+            div.className = `env-msg ${style}`;
+            div.innerText = `> ${text}`;
+            box.prepend(div);
+        }
+
+        // --- PUZZLE BUILDER ---
+        function buildBoard(level) {
+            const config = levelsConfig[level];
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            board.style.gridTemplateColumns = `repeat(${config.cols}, 1fr)`;
+            board.style.width = (config.cols * (parseInt(config.size) + 20)) + "px";
+            
+            document.getElementById('level-title').innerText = config.title;
+            document.getElementById('phase-display').innerText = `${level}/4`;
+
+            for(let i = 1; i <= config.count; i++) {
+                let btn = document.createElement('div');
+                btn.className = 'simon-btn';
+                btn.id = 'b' + i;
+                btn.onclick = () => userClick(i);
+                
+                // Cores baseadas no ID para diferenciar (Arco-íris Dark)
+                let hue = (i * 360 / config.count); 
+                btn.style.backgroundColor = `hsl(${hue}, 70%, 15%)`;
+                btn.style.borderColor = `hsl(${hue}, 70%, 40%)`;
+                btn.style.color = `hsl(${hue}, 100%, 80%)`;
+                btn.innerText = i;
+                btn.style.width = config.size; btn.style.height = config.size;
+                board.appendChild(btn);
+            }
+        }
+
+        // --- LÓGICA DO JOGO ---
+        function startLevel() {
+            if(isAdmin) return; // Admin só inicia, não joga a lógica automática
+            const config = levelsConfig[currentLevel];
+            sequence = [];
+            playerStep = 0;
+            canClick = false;
+
+            if (config.unique) {
+                // Embaralha todos os números para a fase final
+                let pool = []; for(let i=1; i<=config.count; i++) pool.push(i);
+                for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+                sequence = pool;
+            } else {
+                for(let i=0; i<config.seqLen; i++) sequence.push(Math.floor(Math.random() * config.count) + 1);
+            }
+            setStatus(`MEMORIZE A SEQUÊNCIA...`, "#fff");
+            setTimeout(playSequence, 1000);
+        }
+
+        function playSequence() {
+            let i = 0;
+            let speed = currentLevel === 4 ? 400 : 600; 
+            const interval = setInterval(() => {
+                if(!puzzleActive) { clearInterval(interval); return; }
+                flashBtn(sequence[i]);
+                i++;
+                if(i >= sequence.length) { clearInterval(interval); canClick = true; setStatus("SUA VEZ > REPITA", "#0f0"); }
+            }, speed);
+        }
+
+        function userClick(id) {
+            // Se for admin clicando, só manda o efeito visual para todos (Cheat/Demonstração)
+            if(isAdmin) { 
+                flashBtn(id); 
+                localChannel.postMessage({ type: 'REMOTE_INPUT', id: id }); 
+            } else { 
+                handleInput(id); 
+            }
+        }
+
+        function handleInput(id) {
+            if(!canClick || !puzzleActive) return;
+            flashBtn(id);
+
+            // ERRO
+            if(id !== sequence[playerStep]) {
+                if(shieldActive) {
+                    setStatus("ERRO BLOQUEADO (ESCUDO)!", "orange");
+                    shieldActive = false;
+                    addLog("ESCUDO CONSUMIDO.", "env-neu");
+                    return; 
+                }
+
+                setStatus("ERRO DE SEQUÊNCIA! -15s", "red");
+                canClick = false;
+                localChannel.postMessage({ type: 'PUNISH' }); // Avisa admin para tirar tempo
+                
+                // Reinicia a mesma fase
+                setTimeout(() => { 
+                    setStatus("REINICIANDO PADRÃO...", "#aaa"); 
+                    playerStep = 0; 
+                    setTimeout(playSequence, 1000); 
+                }, 1500);
+                return;
+            }
+
+            // ACERTO
+            playerStep++;
+            if(playerStep >= sequence.length) {
+                canClick = false;
+                if(currentLevel >= 4) {
+                    localChannel.postMessage({ type: 'WIN' }); showWin();
+                } else {
+                    currentLevel++;
+                    localChannel.postMessage({ type: 'LEVEL_UP', level: currentLevel });
+                    setStatus("CORRETO! PRÓXIMA FASE...", "#0f0");
+                    setTimeout(() => { 
+                        buildBoard(currentLevel); 
+                        setTimeout(startLevel, 1000); 
+                    }, 1500);
+                }
+            }
+        }
+
+        function flashBtn(id) {
+            const btn = document.getElementById('b' + id);
+            if(btn) { btn.classList.add('lit'); setTimeout(() => btn.classList.remove('lit'), 300); }
+        }
+
+        // --- FUNÇÕES ADMIN ---
+        function setTimer() { 
+            currentTime = parseInt(document.getElementById('start-time-input').value); 
+            updateTimerDisplay(currentTime); 
+            localChannel.postMessage({ type: 'TICK', time: currentTime }); 
+        }
+        
+        function adminStartTimer() { 
+            if(isRunning) return; 
+            isRunning = true; 
+            if(adminInterval) clearInterval(adminInterval); 
+            adminInterval = setInterval(() => { 
+                if(currentTime > 0) { 
+                    currentTime--; 
+                    updateTimerDisplay(currentTime); 
+                    localChannel.postMessage({ type: 'TICK', time: currentTime }); 
+                    if(currentTime <= 0) broadcastLose(); 
+                } 
+            }, 1000); 
+            localChannel.postMessage({ type: 'START_TIMER' }); 
+        }
+        
+        function adminStartPuzzle() { 
+            puzzleActive = true; 
+            currentLevel = 1; 
+            buildBoard(1); 
+            localChannel.postMessage({ type: 'START_PUZZLE' }); 
+        }
+        
+        function adminReset() { 
+            isRunning = false; 
+            if(adminInterval) clearInterval(adminInterval); 
+            currentTime = 300; 
+            currentLevel = 1; 
+            updateTimerDisplay(currentTime); 
+            buildBoard(1); 
+            fullResetVisual(); 
+            localChannel.postMessage({ type: 'RESET_ALL', time: currentTime }); 
+        }
+        
+        function forceLevel(lvl) { 
+            currentLevel = lvl; 
+            buildBoard(lvl); 
+            localChannel.postMessage({ type: 'FORCE_LEVEL', level: lvl }); 
+        }
+        
+        function broadcastWin() { isRunning = false; clearInterval(adminInterval); localChannel.postMessage({ type: 'WIN' }); showWin(); }
+        function broadcastLose() { isRunning = false; clearInterval(adminInterval); localChannel.postMessage({ type: 'LOSE' }); showLose(); }
+        
+        function modifyTime(val) { 
+            currentTime += val; 
+            if(currentTime < 0) currentTime=0; 
+            updateTimerDisplay(currentTime); 
+            localChannel.postMessage({ type: 'TICK', time: currentTime }); 
+        }
+
+        // --- UTILITÁRIOS VISUAIS ---
+        function updateTimerDisplay(s) { 
+            let min=Math.floor(s/60); let sec=s%60; 
+            const el=document.getElementById('timer-display'); 
+            el.innerText=`${min}:${sec<10?'0':''}${sec}`; 
+            if(s<=30 && s>0) el.classList.add('timer-active'); else el.classList.remove('timer-active'); 
+        }
+        
+        function setStatus(txt, col) { 
+            const el=document.getElementById('puzzle-status'); 
+            el.innerText=txt; el.style.color=col; 
+        }
+        
+        function fullResetVisual() { 
+            document.getElementById('win-screen').style.display='none'; 
+            document.getElementById('lose-screen').style.display='none'; 
+            const board=document.getElementById('game-board'); 
+            if(!isAdmin) { board.style.opacity="0.3"; board.style.pointerEvents="none"; } 
+            document.getElementById('cage-txt').innerText="TRANCADA"; 
+            setStatus("SISTEMA EM ESPERA...", "#666"); 
+            puzzleActive=false; shieldActive=false; 
+            document.getElementById('env-log').innerHTML = "> SISTEMA RESETADO..."; 
+        }
+        
+        function showWin() { document.getElementById('win-screen').style.display='flex'; document.getElementById('timer-display').classList.add('timer-safe'); }
+        function showLose() { document.getElementById('lose-screen').style.display='flex'; document.getElementById('cage-txt').innerText="ROMPIDA"; }
+
+        // --- SINCRONIA ---
+        localChannel.onmessage = (e) => {
+            const data = e.data;
+            if(data.type === 'TICK') { currentTime = data.time; updateTimerDisplay(currentTime); isRunning = true; }
+            if(data.type === 'WIN') showWin();
+            if(data.type === 'LOSE') showLose();
+            if(data.type === 'LOG') addLog(data.msg, data.style);
+            
+            if(!isAdmin) {
+                if(data.type === 'START_TIMER') isRunning = true;
+                if(data.type === 'START_PUZZLE') { 
+                    puzzleActive=true; currentLevel=1; buildBoard(1); 
+                    document.getElementById('game-board').style.opacity="1"; 
+                    document.getElementById('game-board').style.pointerEvents="auto"; 
+                    startLevel(); 
+                }
+                if(data.type === 'RESET_ALL') { 
+                    currentTime=data.time; updateTimerDisplay(currentTime); 
+                    currentLevel=1; buildBoard(1); fullResetVisual(); 
+                }
+                if(data.type === 'FORCE_LEVEL') { 
+                    currentLevel=data.level; buildBoard(currentLevel); 
+                    if(puzzleActive) setTimeout(startLevel, 1000); 
+                }
+                if(data.type === 'REMOTE_INPUT') handleInput(data.id);
+                if(data.type === 'SHIELD_UP') { 
+                    shieldActive = true; addLog("ESCUDO ATIVO: PRÓXIMO ERRO IGNORADO", "env-good"); 
+                }
+            }
+            if(isAdmin) {
+                if(data.type === 'PUNISH') modifyTime(-15);
+                if(data.type === 'LEVEL_UP') { currentLevel=data.level; buildBoard(currentLevel); }
+            }
+        };
+
+        // Escuta o Helper Global (do system_core.js)
+        channel.addEventListener('message', (e) => {
+            if (e.data.type === 'TOGGLE_HELPER') {
+                const h = document.getElementById('gm-helper');
+                h.style.display = h.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+
+        // Inicializa board vazio
+        buildBoard(1);
+
+    </script>
+</body>
+</html>

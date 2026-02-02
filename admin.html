@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ADM :: METAMORFOSE</title>
+    <link rel="stylesheet" href="css/style_global.css">
+    <style>
+        body {
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            border-right: 2px solid var(--tech-dim);
+            padding-right: 20px;
+        }
+
+        .scene-btn {
+            width: 100%;
+            margin-bottom: 10px;
+            text-align: left;
+            border-left: 5px solid transparent;
+        }
+
+        .scene-btn:hover {
+            border-left-color: var(--organic-alert);
+        }
+
+        /* Main */
+        #dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel-box {
+            background: rgba(20, 0, 30, 0.5);
+            border: 1px solid var(--tech-dim);
+            padding: 15px;
+        }
+
+        .panel-title {
+            color: var(--text-main);
+            border-bottom: 1px solid var(--tech-dim);
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        /* TABELA DE JOGADORES */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 5px;
+            /* Espaço entre linhas */
+            font-size: 0.8rem;
+        }
+
+        th {
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            color: #888;
+        }
+
+        td {
+            background: #0a0a0a;
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #222;
+            border-bottom: 1px solid #222;
+            vertical-align: middle;
+        }
+
+        /* Wrapper para alinhar os Pontos */
+        .points-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            height: 100%;
+        }
+
+        /* Wrapper para os botões de Status */
+        .status-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* Inputs & Buttons Gerais */
+        .input-terminal {
+            background: #000;
+            border: 1px solid var(--tech-primary);
+            color: var(--ezequiel-glitch);
+            font-family: 'Consolas', monospace;
+            padding: 5px;
+            width: 50px;
+            text-align: center;
+            font-weight: bold;
+            height: 25px;
+            /* Altura fixa para alinhar */
+            box-sizing: border-box;
+        }
+
+        .btn-set {
+            padding: 0 10px;
+            height: 25px;
+            /* Altura fixa igual ao input */
+            font-size: 0.7rem;
+            background: var(--tech-dim);
+            border: 1px solid var(--tech-primary);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-set:hover {
+            background: var(--tech-primary);
+            color: #000;
+        }
+
+        /* MINI BOTÕES DE STATUS (4 ESTADOS) */
+        .btn-mini-status {
+            width: 35px;
+            height: 30px;
+            background: #111;
+            border: 1px solid #333;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.4;
+            /* Apagado por padrão */
+            transition: all 0.2s;
+        }
+
+        .btn-mini-status:hover {
+            opacity: 0.8;
+            transform: scale(1.1);
+        }
+
+        /* Estados Ativos (Brilhando) */
+        .active-waiting {
+            opacity: 1;
+            background: #333;
+            border-color: #888;
+            box-shadow: 0 0 5px #555;
+        }
+
+        .active-alive {
+            opacity: 1;
+            background: #002200;
+            border-color: #0f0;
+            box-shadow: 0 0 8px #0f0;
+        }
+
+        .active-dead {
+            opacity: 1;
+            background: #220000;
+            border-color: #f00;
+            box-shadow: 0 0 8px #f00;
+        }
+
+        .active-hacked {
+            opacity: 1;
+            background: #222200;
+            border-color: #ffea00;
+            box-shadow: 0 0 8px #ffea00;
+            animation: blink-mini 1s infinite;
+        }
+
+        @keyframes blink-mini {
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        /* Chaves Ezequiel */
+        .key-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .key-slot {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .key-slot.active {
+            border-color: var(--ezequiel-glitch);
+            color: var(--ezequiel-glitch);
+            box-shadow: 0 0 10px var(--ezequiel-glitch);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <h2>NAVEGAÇÃO</h2>
+        <button class="scene-btn" onclick="sendNavigation('capa.html')" style="border-color: #fff; color: #fff; background: rgba(255,255,255,0.05);">
+            🎬 CAPA DA SESSÃO (Intro)
+        </button>
+        <button class="scene-btn" onclick="sendNavigation('index.html')" style="border-color: #33ff00; color: #33ff00;">
+            📟 TELA INICIAL (LOBBY)
+        </button>
+        <button class="scene-btn" onclick="goScene('scenes/painel.html')">00. PAINEL GERAL (Status)</button>
+        <button class="scene-btn" onclick="goScene('scenes/sala1_reator.html')">01. REATOR (Tesla)</button>
+        <button class="scene-btn" onclick="goScene('scenes/sala2_labirinto.html')">02. LABIRINTO (Stealth)</button>
+        <button class="scene-btn" onclick="goScene('scenes/sala3_cirurgia.html')">03. CIRURGIA (Puzzle)</button>
+        <button class="scene-btn" onclick="goScene('scenes/sala4_loja.html')">04. ENFERMARIA (Loja)</button>
+        <button class="scene-btn" onclick="goScene('scenes/sala5_boss.html')">05. NÚCLEO (Boss)</button>
+        <button class="scene-btn" onclick="window.open('soundboard.html', '_blank', 'width=800,height=600')">
+            🎛️ MESA DE SOM (DJ)
+        </button>
+
+        <hr style="border-color: #333; margin: 20px 0;">
+
+        <button class="scene-btn organic-mode" onclick="triggerGlobalHelper()">[?] MOSTRAR HELPER NA CENA</button>
+        <button class="scene-btn" style="border-color: #555; color: #555;" onclick="resetAll()">RESETAR
+            CAMPANHA</button>
+    </div>
+
+    <div id="dashboard">
+
+        <div class="panel-box" style="grid-column: span 2;">
+            <div class="panel-title">MONITORAMENTO DE COBAIAS</div>
+            <table id="player-table">
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">ID</th>
+                        <th style="width: 20%;">DOENÇA (1-6)</th>
+                        <th style="width: 25%;">PONTOS (LOJA)</th>
+                        <th style="width: 35%;">STATUS</th>
+                    </tr>
+                </thead>
+                <tbody id="p-body"></tbody>
+            </table>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-title" style="color: var(--ezequiel-glitch);">PROTOCOLO EZEQUIEL</div>
+            <div style="font-size: 0.8rem; color: #888;">Marque se os jogadores acharam o glitch nas cenas:</div>
+            <div class="key-box">
+                <div id="key-0" class="key-slot" onclick="toggleKey(0)">02</div>
+                <div id="key-1" class="key-slot" onclick="toggleKey(1)">03</div>
+                <div id="key-2" class="key-slot" onclick="toggleKey(2)">04</div>
+            </div>
+        </div>
+
+        <div class="panel-box">
+            <div class="panel-title">LOG DO SISTEMA</div>
+            <div id="sys-log" style="height: 80px; overflow-y: auto; font-size: 0.7rem; color: #aaa;">
+                > SISTEMA INICIADO...
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/system_core.js"></script>
+    <script>
+        // --- RENDERIZAÇÃO DA TABELA ---
+        function renderAdmin() {
+            const tbody = document.getElementById('p-body');
+            tbody.innerHTML = '';
+
+            globalState.players.forEach((p, idx) => {
+
+                // Define classes ativas para os botões com base no status atual
+                // Default é waiting se não tiver status
+                const currentStatus = p.status || 'waiting';
+
+                const clWaiting = currentStatus === 'waiting' ? 'active-waiting' : '';
+                const clAlive = currentStatus === 'alive' ? 'active-alive' : '';
+                const clDead = currentStatus === 'dead' ? 'active-dead' : '';
+                const clHacked = currentStatus === 'hacked' ? 'active-hacked' : '';
+
+                let row = `
+                    <tr>
+                        <td style="color:var(--tech-primary); font-weight:bold; font-size:1rem;">${p.name}</td>
+                        
+                        <td>
+                            <button style="padding:2px 8px; cursor:pointer;" onclick="modStat(${idx}, 'sickness', -1)">-</button>
+                            <span style="margin:0 10px; color:var(--organic-alert); font-weight:bold; font-size:1.2rem;">${p.sickness}</span>
+                            <button style="padding:2px 8px; cursor:pointer;" onclick="modStat(${idx}, 'sickness', 1)">+</button>
+                        </td>
+                        
+                        <td>
+                            <div class="points-wrapper">
+                                <input type="number" class="input-terminal" id="pts-input-${idx}" value="${p.points}">
+                                <button class="btn-set" onclick="setPoints(${idx})">SET</button>
+                            </div>
+                        </td>
+                        
+                        <td>
+                            <div class="status-selector">
+                                <button class="btn-mini-status ${clWaiting}" onclick="changeStatus(${idx}, 'waiting')" title="Aguardando">⌛</button>
+                                <button class="btn-mini-status ${clAlive}"   onclick="changeStatus(${idx}, 'alive')"   title="Conectado">🟢</button>
+                                <button class="btn-mini-status ${clDead}"    onclick="changeStatus(${idx}, 'dead')"    title="Morto">💀</button>
+                                <button class="btn-mini-status ${clHacked}"  onclick="changeStatus(${idx}, 'hacked')"  title="Hackeado">👁️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+
+            // Atualiza chaves Ezequiel
+            globalState.ezequiel_keys.forEach((isActive, i) => {
+                const el = document.getElementById(`key-${i}`);
+                if (el) {
+                    if (isActive) el.classList.add('active');
+                    else el.classList.remove('active');
+                }
+            });
+        }
+
+        // --- ALTERAÇÃO DE STATUS (BOTÕES INDIVIDUAIS) ---
+        function changeStatus(idx, newStatus) {
+            globalState.players[idx].status = newStatus;
+            saveState();
+            renderAdmin();
+            // Feedback no log
+            let icon = "❓";
+            if (newStatus === 'waiting') icon = "⌛";
+            if (newStatus === 'alive') icon = "🟢";
+            if (newStatus === 'dead') icon = "💀";
+            if (newStatus === 'hacked') icon = "👁️";
+
+            log(`Status de ${globalState.players[idx].name} > ${icon} ${newStatus.toUpperCase()}`);
+        }
+
+        // --- OUTRAS FUNÇÕES ---
+        function setPoints(idx) {
+            const input = document.getElementById(`pts-input-${idx}`);
+            let val = parseInt(input.value);
+            if (isNaN(val)) val = 0;
+            globalState.players[idx].points = val;
+            saveState();
+            input.style.borderColor = "#0f0";
+            setTimeout(() => input.style.borderColor = "var(--tech-primary)", 500);
+        }
+
+        function modStat(idx, stat, val) {
+            globalState.players[idx][stat] += val;
+            if (stat === 'sickness') {
+                if (globalState.players[idx][stat] < 1) globalState.players[idx][stat] = 1;
+                if (globalState.players[idx][stat] > 6) globalState.players[idx][stat] = 6;
+            } else {
+                if (globalState.players[idx][stat] < 0) globalState.players[idx][stat] = 0;
+            }
+            saveState();
+            renderAdmin();
+        }
+
+        function goScene(url) {
+            sendNavigation(url);
+            window.open(url + '?admin=true', '_blank');
+            log(`Cena: ${url}`);
+        }
+
+        function toggleKey(keyIdx) {
+            globalState.ezequiel_keys[keyIdx] = !globalState.ezequiel_keys[keyIdx];
+            saveState();
+            renderAdmin();
+        }
+
+        function triggerGlobalHelper() {
+            toggleHelper();
+            log("Helper ativado.");
+        }
+
+        function resetAll() {
+            if (confirm("Resetar tudo?")) {
+                localStorage.removeItem('meta_state');
+                location.reload();
+            }
+        }
+
+        function log(msg) {
+            const box = document.getElementById('sys-log');
+            if (box) {
+                const time = new Date().toLocaleTimeString();
+                box.innerHTML = `[${time}] > ${msg}<br>` + box.innerHTML;
+            }
+        }
+
+        renderAdmin();
+    </script>
+</body>
+
+</html>
