@@ -1,2 +1,3 @@
+.venv/
 assets/video/*.mp4
 assets/video/*.mov
